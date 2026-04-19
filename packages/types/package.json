@@ -1,0 +1,22 @@
+{
+  "name": "@bluecup/types",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "echo \"(types) lint skipped\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21"
+  }
+}

@@ -1,0 +1,18 @@
+declare module "@bluecup/types" {
+  export type Role = "admin" | "committee" | "captain" | "team_member";
+  export type UserRole = Role;
+
+  export interface JwtUser {
+    sub: string;
+    email: string;
+    role: Role;
+  }
+
+  export type CatchType = "release" | "weigh_in";
+  export type MediaType = "photo" | "video";
+  export type ReviewAction =
+    | "approve"
+    | "reject"
+    | "request_more_evidence"
+    | "penalize";
+}

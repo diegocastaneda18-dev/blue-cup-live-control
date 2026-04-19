@@ -1,0 +1,53 @@
+{
+  "name": "@bluecup/api",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "nest start -b swc -p tsconfig.json --watch",
+    "build": "nest build",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "echo \"(api) lint skipped\"",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts",
+    "create-admin-user": "ts-node -r tsconfig-paths/register prisma/create-admin-user.ts"
+  },
+  "dependencies": {
+    "@bluecup/types": "workspace:*",
+    "@nestjs/common": "^10.4.20",
+    "@nestjs/config": "^3.3.0",
+    "@nestjs/core": "^10.4.20",
+    "@nestjs/jwt": "^10.2.0",
+    "@nestjs/passport": "^10.0.3",
+    "@nestjs/platform-express": "^10.4.20",
+    "@nestjs/platform-socket.io": "10.4.22",
+    "@nestjs/websockets": "^10.4.20",
+    "@prisma/client": "^6.8.2",
+    "argon2": "^0.44.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "socket.io": "^4.8.1",
+    "uuid": "^11.1.0",
+    "zod": "^3.25.56"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.4.9",
+    "@nestjs/schematics": "^10.2.3",
+    "@nestjs/testing": "^10.4.20",
+    "@swc/cli": "^0.5.0",
+    "@swc/core": "^1.15.26",
+    "@types/express": "^4.17.23",
+    "@types/node": "^24.0.0",
+    "@types/passport-jwt": "^4.0.1",
+    "@types/uuid": "^10.0.0",
+    "prisma": "^6.8.2",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.8.3"
+  }
+}

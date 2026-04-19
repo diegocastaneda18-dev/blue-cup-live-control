@@ -1,0 +1,25 @@
+{
+  "name": "blue-cup-live-control",
+  "private": true,
+  "packageManager": "pnpm@9.15.5",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "db:up": "docker compose -f infra/docker/docker-compose.yml up -d",
+    "db:down": "docker compose -f infra/docker/docker-compose.yml down",
+    "db:reset": "docker compose -f infra/docker/docker-compose.yml down -v && docker compose -f infra/docker/docker-compose.yml up -d",
+    "api:dev": "turbo dev --filter=@bluecup/api",
+    "web:dev": "turbo dev --filter=@bluecup/web",
+    "seed": "turbo seed --filter=@bluecup/api"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.5",
+    "typescript": "^5.8.3"
+  }
+}
+

@@ -1,0 +1,304 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  committee
+  captain
+  team_member
+  public_view
+}
+
+enum CatchStatus {
+  draft
+  submitted
+  pending_review
+  more_evidence_required
+  approved
+  rejected
+  protested
+  penalized
+  official
+}
+
+enum CatchType {
+  release
+  weigh_in
+}
+
+enum MediaType {
+  photo
+  video
+}
+
+enum ReviewAction {
+  approve
+  reject
+  request_more_evidence
+  penalize
+}
+
+enum NotificationType {
+  system
+  catch_status
+  review_request
+  protest_update
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  displayName  String
+  role         Role
+  passwordHash String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  teamMemberships TeamMember[]
+  catches         Catch[]
+  reviews         CatchReview[]  @relation("reviewer")
+  notifications   Notification[]
+  auditLogs       AuditLog[]
+  protests        Protest[]
+  penalties       Penalty[]
+}
+
+model Tournament {
+  id         String   @id @default(uuid())
+  name       String
+  location   String?
+  startsAt   DateTime
+  endsAt     DateTime
+  isActive   Boolean  @default(true)
+  isOfficial Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  teams        Team[]
+  species      Species[]
+  categories   Category[]
+  scoringRules ScoringRule[]
+  catches      Catch[]
+  penalties    Penalty[]
+  protests     Protest[]
+}
+
+model Team {
+  id            String   @id @default(uuid())
+  tournamentId  String
+  name          String
+  captainUserId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tournament Tournament   @relation(fields: [tournamentId], references: [id])
+  boat       Boat?
+  members    TeamMember[]
+  catches    Catch[]
+  protests   Protest[]
+  penalties  Penalty[]
+
+  @@unique([tournamentId, name])
+}
+
+model Boat {
+  id        String   @id @default(uuid())
+  teamId    String   @unique
+  name      String
+  registry  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team Team @relation(fields: [teamId], references: [id])
+}
+
+model TeamMember {
+  id        String   @id @default(uuid())
+  teamId    String
+  userId    String
+  roleLabel String
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([teamId, userId])
+}
+
+model Species {
+  id           String   @id @default(uuid())
+  tournamentId String
+  name         String
+  code         String
+  createdAt    DateTime @default(now())
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id])
+  catches    Catch[]
+
+  @@unique([tournamentId, code])
+}
+
+model Category {
+  id           String   @id @default(uuid())
+  tournamentId String
+  name         String
+  code         String
+  createdAt    DateTime @default(now())
+
+  tournament   Tournament    @relation(fields: [tournamentId], references: [id])
+  scoringRules ScoringRule[]
+  catches      Catch[]
+
+  @@unique([tournamentId, code])
+}
+
+model ScoringRule {
+  id                  String   @id @default(uuid())
+  tournamentId        String
+  categoryId          String
+  name                String
+  isActive            Boolean  @default(true)
+  // Minimal MVP: points = base + (multiplier * weightKg) + (lengthCm * lengthPointsPerCm)
+  basePoints          Int      @default(0)
+  weightKgMultiplier  Float    @default(0)
+  lengthCmPointsPerCm Float    @default(0)
+  requiresMedia       Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id])
+  category   Category   @relation(fields: [categoryId], references: [id])
+}
+
+model Catch {
+  id           String      @id @default(uuid())
+  tournamentId String
+  teamId       String
+  createdById  String
+  speciesId    String?
+  categoryId   String
+  type         CatchType
+  status       CatchStatus @default(draft)
+
+  occurredAtClient DateTime?
+  occurredAtServer DateTime  @default(now())
+
+  weightKg Float?
+  lengthCm Float?
+  notes    String?
+
+  scorePreliminary Float? @default(0)
+  scoreOfficial    Float? @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id])
+  team       Team       @relation(fields: [teamId], references: [id])
+  createdBy  User       @relation(fields: [createdById], references: [id])
+  species    Species?   @relation(fields: [speciesId], references: [id])
+  category   Category   @relation(fields: [categoryId], references: [id])
+
+  media     CatchMedia[]
+  reviews   CatchReview[]
+  protests  Protest[]
+  penalties Penalty[]
+
+  @@index([tournamentId, status])
+  @@index([teamId, createdAt])
+}
+
+model CatchMedia {
+  id        String    @id @default(uuid())
+  catchId   String
+  type      MediaType
+  objectKey String
+  url       String
+  createdAt DateTime  @default(now())
+
+  catch Catch @relation(fields: [catchId], references: [id])
+}
+
+model CatchReview {
+  id            String       @id @default(uuid())
+  catchId       String
+  reviewerId    String
+  action        ReviewAction
+  notes         String?
+  penaltyPoints Int?
+  createdAt     DateTime     @default(now())
+
+  catch    Catch @relation(fields: [catchId], references: [id])
+  reviewer User  @relation("reviewer", fields: [reviewerId], references: [id])
+
+  @@index([catchId, createdAt])
+}
+
+model Protest {
+  id           String   @id @default(uuid())
+  tournamentId String
+  catchId      String?
+  teamId       String
+  createdById  String
+  reason       String
+  status       String   @default("open") // MVP: open|resolved|dismissed
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id])
+  catch      Catch?     @relation(fields: [catchId], references: [id])
+  team       Team       @relation(fields: [teamId], references: [id])
+  createdBy  User       @relation(fields: [createdById], references: [id])
+}
+
+model Penalty {
+  id           String   @id @default(uuid())
+  tournamentId String
+  catchId      String?
+  teamId       String
+  points       Int
+  reason       String
+  createdById  String
+  createdAt    DateTime @default(now())
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id])
+  catch      Catch?     @relation(fields: [catchId], references: [id])
+  team       Team       @relation(fields: [teamId], references: [id])
+  createdBy  User       @relation(fields: [createdById], references: [id])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String?
+  meta      Json?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}

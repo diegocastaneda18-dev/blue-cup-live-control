@@ -1,0 +1,24 @@
+blue-cup-live-control/
+  apps/
+    web/
+    api/
+  packages/
+    ui/
+    config/
+    types/
+  docs/
+    prd/
+    architecture/
+    prompts/
+    backlog/
+  infra/
+    docker/
+    db/
+  .cursor/
+    rules/
+  .env.example
+  package.json
+  pnpm-workspace.yaml
+  turbo.json
+  tsconfig.base.json
+  README.md
