@@ -1,4 +1,3 @@
-import { Prisma } from "@prisma/client";
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../infra/prisma/prisma.service";
 
@@ -26,7 +25,7 @@ export class AuditService {
         action,
         entity,
         entityId: entityId ?? null,
-        meta: (meta ?? undefined) as Prisma.InputJsonValue | undefined,
+        meta: meta === undefined ? undefined : (meta as unknown as object),
         ip: ctx?.ip ?? null,
         userAgent: ctx?.userAgent ?? null
       }

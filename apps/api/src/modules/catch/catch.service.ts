@@ -1,5 +1,4 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { Prisma, ReviewAction } from "@prisma/client";
 import { PrismaService } from "../../infra/prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { LeaderboardGateway } from "../leaderboard/leaderboard.gateway";
@@ -172,16 +171,13 @@ export class CatchService {
       throw new BadRequestException("penaltyPoints required for penalize");
     }
 
-    const reviewActionMap: Record<string, ReviewAction> = {
-      approve: ReviewAction.approve,
-      reject: ReviewAction.reject,
-      request_more_evidence: ReviewAction.request_more_evidence,
-      penalize: ReviewAction.penalize
-    };
-
     const score = this.computeScore(scoringRule, c);
 
-    const nextStatus: Prisma.CatchUpdateInput["status"] =
+    const nextStatus:
+      | "approved"
+      | "rejected"
+      | "more_evidence_required"
+      | "penalized" =
       params.action === "approve"
         ? "approved"
         : params.action === "reject"
@@ -195,7 +191,7 @@ export class CatchService {
         data: {
           catchId: c.id,
           reviewerId: params.reviewerId,
-          action: reviewActionMap[params.action],
+          action: params.action as never,
           notes: params.notes,
           penaltyPoints: params.penaltyPoints
         }
