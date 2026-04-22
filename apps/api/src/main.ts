@@ -1,30 +1,14 @@
-import "reflect-metadata";
-import { ValidationPipe } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: true });
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true
-    })
-  );
+  const app = await NestFactory.create(AppModule);
 
-  const config = app.get(ConfigService);
   const port = Number(process.env.PORT) || 4000;
-  const appMode = String(config.get<string>("APP_MODE") ?? process.env.NODE_ENV ?? "development");
+
   await app.listen(port, "0.0.0.0");
-  // eslint-disable-next-line no-console
-  console.log(`Blue Cup API listening on port ${port} (APP_MODE=${appMode})`);
+
+  console.log(`Blue Cup API listening on port ${port}`);
 }
 
-bootstrap().catch((err) => {
-  // eslint-disable-next-line no-console
-  console.error(err);
-  process.exit(1);
-});
-
+bootstrap();
