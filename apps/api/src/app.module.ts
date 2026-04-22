@@ -8,6 +8,7 @@ import { LeaderboardModule } from "./modules/leaderboard/leaderboard.module";
 import { TeamModule } from "./modules/team/team.module";
 import { TournamentModule } from "./modules/tournament/tournament.module";
 import { UserModule } from "./modules/user/user.module";
+import { HealthController } from "./health.controller";
 
 @Module({
   imports: [
@@ -20,7 +21,8 @@ import { UserModule } from "./modules/user/user.module";
     TeamModule,
     CatchModule,
     LeaderboardModule
-  ]
+  ],
+  controllers: [HealthController]
 })
 export class AppModule {}
 
