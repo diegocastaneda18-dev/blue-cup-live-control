@@ -37,6 +37,31 @@ function authHeader(): HeadersInit {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+async function uploadCatchEvidence(
+  token: string,
+  kind: "photo" | "video",
+  file: File
+): Promise<{ objectKey: string; url: string } | null> {
+  const form = new FormData();
+  form.append("file", file);
+  const url = `${publicApiUrl("/catches/media/upload")}?kind=${encodeURIComponent(kind)}`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form
+    });
+    if (!res.ok) return null;
+    const j = (await res.json()) as { objectKey?: string; url?: string };
+    const objectKey = j.objectKey?.trim();
+    const evidenceUrl = j.url?.trim();
+    if (!objectKey || !evidenceUrl) return null;
+    return { objectKey, url: evidenceUrl };
+  } catch {
+    return null;
+  }
+}
+
 export default function NewCatchPage() {
   const router = useRouter();
   const toast = useToast();
@@ -65,6 +90,10 @@ export default function NewCatchPage() {
   const [photoUrl, setPhotoUrl] = useState("");
   const [videoObjectKey, setVideoObjectKey] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [photoEvidenceInputKey, setPhotoEvidenceInputKey] = useState(0);
+  const [videoEvidenceInputKey, setVideoEvidenceInputKey] = useState(0);
 
   const [submitting, setSubmitting] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
@@ -290,17 +319,17 @@ export default function NewCatchPage() {
     const n = notes.trim();
     if (n) body.notes = n;
 
-    const po = photoObjectKey.trim();
-    const pu = photoUrl.trim();
-    const vo = videoObjectKey.trim();
-    const vu = videoUrl.trim();
-    if ((po && !pu) || (!po && pu)) {
-      toast.error("Photo evidence: provide both object key and URL, or leave both empty.");
-      return;
+    let effectivePhotoKey = photoObjectKey.trim();
+    let effectivePhotoUrl = photoUrl.trim();
+    let effectiveVideoKey = videoObjectKey.trim();
+    let effectiveVideoUrl = videoUrl.trim();
+    if ((effectivePhotoKey && !effectivePhotoUrl) || (!effectivePhotoKey && effectivePhotoUrl)) {
+      effectivePhotoKey = "";
+      effectivePhotoUrl = "";
     }
-    if ((vo && !vu) || (!vo && vu)) {
-      toast.error("Video evidence: provide both object key and URL, or leave both empty.");
-      return;
+    if ((effectiveVideoKey && !effectiveVideoUrl) || (!effectiveVideoKey && effectiveVideoUrl)) {
+      effectiveVideoKey = "";
+      effectiveVideoUrl = "";
     }
 
     setSubmitting(true);
@@ -333,8 +362,24 @@ export default function NewCatchPage() {
       }
 
       const mediaParts: { type: "photo" | "video"; objectKey: string; url: string }[] = [];
-      if (po && pu) mediaParts.push({ type: "photo", objectKey: po, url: pu });
-      if (vo && vu) mediaParts.push({ type: "video", objectKey: vo, url: vu });
+      let photoUploadFailed = false;
+      let videoUploadFailed = false;
+
+      if (photoFile) {
+        const up = await uploadCatchEvidence(token, "photo", photoFile);
+        if (up) mediaParts.push({ type: "photo", objectKey: up.objectKey, url: up.url });
+        else photoUploadFailed = true;
+      } else if (effectivePhotoKey && effectivePhotoUrl) {
+        mediaParts.push({ type: "photo", objectKey: effectivePhotoKey, url: effectivePhotoUrl });
+      }
+
+      if (videoFile) {
+        const up = await uploadCatchEvidence(token, "video", videoFile);
+        if (up) mediaParts.push({ type: "video", objectKey: up.objectKey, url: up.url });
+        else videoUploadFailed = true;
+      } else if (effectiveVideoKey && effectiveVideoUrl) {
+        mediaParts.push({ type: "video", objectKey: effectiveVideoKey, url: effectiveVideoUrl });
+      }
 
       const mediaFailures: string[] = [];
       for (const m of mediaParts) {
@@ -364,10 +409,18 @@ export default function NewCatchPage() {
         }
       }
 
-      if (mediaFailures.length > 0) {
-        const msg = mediaFailures.join(" · ");
-        setMediaError(msg);
-        toast.error(`Catch saved, but media upload failed: ${msg}`);
+      const userLines: string[] = [];
+      if (photoUploadFailed) {
+        userLines.push("Catch saved, but photo upload failed. You can retry later.");
+      }
+      if (videoUploadFailed) {
+        userLines.push("Catch saved, but video upload failed. You can retry later.");
+      }
+
+      if (userLines.length > 0 || mediaFailures.length > 0) {
+        const combined = [...userLines, ...mediaFailures].join(" · ");
+        setMediaError(combined);
+        toast.error(userLines[0] ?? `Catch saved, but media upload failed: ${mediaFailures.join(" · ")}`);
       } else {
         toast.success("Catch submitted — pending committee review.");
       }
@@ -381,6 +434,10 @@ export default function NewCatchPage() {
       setPhotoUrl("");
       setVideoObjectKey("");
       setVideoUrl("");
+      setPhotoFile(null);
+      setVideoFile(null);
+      setPhotoEvidenceInputKey((k) => k + 1);
+      setVideoEvidenceInputKey((k) => k + 1);
     } catch {
       toast.error("Could not reach the API.");
     } finally {
@@ -445,7 +502,7 @@ export default function NewCatchPage() {
           <Card title="Submitted">
             <p className="text-sm text-emerald-100">Your catch was recorded successfully.</p>
             {mediaError ? (
-              <p className="mt-2 text-sm text-amber-100">Catch saved, but some media uploads failed: {mediaError}</p>
+              <p className="mt-2 text-sm text-amber-100">{mediaError}</p>
             ) : null}
             <Link
               href="/catches"
@@ -579,20 +636,23 @@ export default function NewCatchPage() {
             <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Media evidence (optional)</p>
               <p className="mt-1 text-xs text-slate-500">
-                Mock flow: paste a public HTTPS URL and a storage object key. You can pick a file below to prefill the
-                object key only.
+                Optional: choose a photo or video file (uploaded when you submit), or paste both a public HTTPS URL and
+                storage object key. Incomplete pairs are ignored so your catch can still be saved.
               </p>
 
               <div className="mt-4 grid gap-4">
                 <div className="grid gap-2">
                   <span className="text-sm font-medium text-slate-300">Photo</span>
                   <input
+                    key={photoEvidenceInputKey}
                     type="file"
                     accept="image/*"
                     className="text-xs text-slate-400 file:mr-2 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-slate-200"
                     onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f && !photoObjectKey.trim()) setPhotoObjectKey(`mock/${f.name}`);
+                      const f = e.target.files?.[0] ?? null;
+                      setPhotoFile(f);
+                      setPhotoObjectKey("");
+                      setPhotoUrl("");
                     }}
                   />
                   <input
@@ -613,12 +673,15 @@ export default function NewCatchPage() {
                 <div className="grid gap-2">
                   <span className="text-sm font-medium text-slate-300">Video</span>
                   <input
+                    key={videoEvidenceInputKey}
                     type="file"
                     accept="video/*"
                     className="text-xs text-slate-400 file:mr-2 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-slate-200"
                     onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f && !videoObjectKey.trim()) setVideoObjectKey(`mock/${f.name}`);
+                      const f = e.target.files?.[0] ?? null;
+                      setVideoFile(f);
+                      setVideoObjectKey("");
+                      setVideoUrl("");
                     }}
                   />
                   <input

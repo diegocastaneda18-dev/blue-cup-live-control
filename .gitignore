@@ -21,3 +21,4 @@ apps/api/prisma/*.d.ts
 packages/types/src/*.js
 packages/types/src/*.js.map
 packages/types/src/*.d.ts
+apps/api/uploads/
