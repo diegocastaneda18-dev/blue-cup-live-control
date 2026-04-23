@@ -1,11 +1,12 @@
 "use client";
 
 import { Card } from "@bluecup/ui";
-import { publicApiUrl } from "../../lib/env";
+import { getPublicApiBaseUrl } from "../../lib/env";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-const API_LOGIN = publicApiUrl("/auth/login");
+const API_BASE_URL = getPublicApiBaseUrl();
+const API_LOGIN = `${API_BASE_URL}/auth/login`;
 const ACCESS_TOKEN_KEY = "accessToken";
 
 export default function LoginPage() {
@@ -41,7 +42,7 @@ export default function LoginPage() {
       localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
       router.replace("/dashboard");
     } catch {
-      setError("Could not reach the API. Is it running on port 4000?");
+      setError(`Could not reach the API at ${API_BASE_URL}.`);
     } finally {
       setPending(false);
     }
