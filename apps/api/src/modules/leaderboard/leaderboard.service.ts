@@ -26,7 +26,7 @@ export class LeaderboardService {
     for (const c of catches) {
       const row = byTeam.get(c.teamId);
       if (!row) continue;
-      if (c.status === "approved") row.pointsPreliminary += c.scorePreliminary ?? 0;
+      if (c.status === "approved") row.pointsPreliminary += (c.scoreOfficial ?? c.scorePreliminary) ?? 0;
       if (c.status === "official") row.pointsOfficial += c.scoreOfficial ?? 0;
     }
 

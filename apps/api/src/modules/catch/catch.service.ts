@@ -172,6 +172,13 @@ export class CatchService {
     }
 
     const score = this.computeScore(scoringRule, c);
+    let releasePoints = 0;
+    if (c.type === "release") {
+      if (c.speciesId) {
+        const s = await this.prisma.species.findUnique({ where: { id: c.speciesId }, select: { releasePoints: true } });
+        releasePoints = s?.releasePoints ?? 0;
+      }
+    }
 
     const nextStatus:
       | "approved"
@@ -201,9 +208,9 @@ export class CatchService {
         where: { id: c.id },
         data: {
           status: nextStatus,
-          scorePreliminary: params.action === "approve" ? score : c.scorePreliminary,
+          scorePreliminary: params.action === "approve" ? (c.type === "release" ? releasePoints : score) : c.scorePreliminary,
           // Official is only set by admin export/lock flow in this MVP
-          scoreOfficial: c.scoreOfficial
+          scoreOfficial: params.action === "approve" && c.type === "release" ? releasePoints : c.scoreOfficial
         }
       });
 
@@ -233,9 +240,19 @@ export class CatchService {
     if (!c) throw new NotFoundException("Catch not found");
     if (c.status !== "approved") throw new BadRequestException("Only approved catches can be marked official");
 
+    let nextOfficialScore = c.scorePreliminary;
+    if (c.type === "release") {
+      if (c.speciesId) {
+        const s = await this.prisma.species.findUnique({ where: { id: c.speciesId }, select: { releasePoints: true } });
+        nextOfficialScore = s?.releasePoints ?? 0;
+      } else {
+        nextOfficialScore = 0;
+      }
+    }
+
     const updated = await this.prisma.catch.update({
       where: { id: c.id },
-      data: { status: "official", scoreOfficial: c.scorePreliminary }
+      data: { status: "official", scoreOfficial: nextOfficialScore }
     });
 
     await this.audit.log({

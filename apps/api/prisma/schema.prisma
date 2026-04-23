@@ -133,11 +133,12 @@ model TeamMember {
 }
 
 model Species {
-  id           String   @id @default(uuid())
-  tournamentId String
-  name         String
-  code         String
-  createdAt    DateTime @default(now())
+  id            String   @id @default(uuid())
+  tournamentId  String
+  name          String
+  code          String
+  releasePoints Int      @default(0)
+  createdAt     DateTime @default(now())
 
   tournament Tournament @relation(fields: [tournamentId], references: [id])
   catches    Catch[]

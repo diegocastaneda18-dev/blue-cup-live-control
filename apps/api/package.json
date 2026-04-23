@@ -10,6 +10,8 @@
     "lint": "echo \"(api) lint skipped\"",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "backfill:release-scoring": "ts-node -r tsconfig-paths/register prisma/backfill-release-scoring.ts",
+    "one-time:upsert-las-marias-2026-species": "ts-node -r tsconfig-paths/register prisma/upsert-las-marias-2026-species.ts",
     "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts",
     "create-admin-user": "ts-node -r tsconfig-paths/register prisma/create-admin-user.ts"
   },

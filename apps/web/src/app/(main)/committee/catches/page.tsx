@@ -240,7 +240,12 @@ export default function CommitteeCatchesPage() {
         },
         body: JSON.stringify(body)
       });
-      const raw = (await res.json().catch(() => null)) as { message?: string | string[] } | null;
+      const raw = (await res.json().catch(() => null)) as
+        | {
+            message?: string | string[];
+            updatedCatch?: { scorePreliminary?: number | null; scoreOfficial?: number | null; status?: string };
+          }
+        | null;
       if (res.status === 401) {
         localStorage.removeItem(ACCESS_TOKEN_KEY);
         router.replace("/login");
@@ -265,7 +270,13 @@ export default function CommitteeCatchesPage() {
         delete next[catchId];
         return next;
       });
-      const ok = `${actionLabel[action]} recorded — queue refreshed.`;
+      const score =
+        action === "approve"
+          ? Math.max(raw?.updatedCatch?.scorePreliminary ?? 0, raw?.updatedCatch?.scoreOfficial ?? 0)
+          : null;
+      const scoreTag =
+        action === "approve" && score != null && score > 0 ? ` Score: ${score.toLocaleString(undefined, { maximumFractionDigits: 2 })}.` : "";
+      const ok = `${actionLabel[action]} recorded — queue refreshed.${scoreTag}`;
       setReviewNotice({ variant: "success", text: ok });
       toast.success(`${actionLabel[action]} recorded.`);
       dispatchLeaderboardRefresh();
