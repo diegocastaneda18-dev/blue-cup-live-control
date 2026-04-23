@@ -30,9 +30,17 @@ export default function LoginPage() {
         | { accessToken?: string; message?: string | string[] }
         | null;
       if (!res.ok) {
+        if (res.status === 401) {
+          setError("Invalid credentials");
+          return;
+        }
+        if (res.status === 403) {
+          setError("Forbidden");
+          return;
+        }
         const msg = data?.message;
         const text = Array.isArray(msg) ? msg.join(" ") : msg;
-        setError(text || `Login failed (${res.status}).`);
+        setError(text?.trim() ? String(text) : `Login failed (${res.status}).`);
         return;
       }
       if (!data?.accessToken) {
@@ -41,8 +49,9 @@ export default function LoginPage() {
       }
       localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
       router.replace("/dashboard");
-    } catch {
-      setError(`Could not reach the API at ${API_BASE_URL}.`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : typeof err === "string" ? err : "Unknown error";
+      setError(message);
     } finally {
       setPending(false);
     }
