@@ -41,7 +41,7 @@ async function uploadCatchEvidence(
   token: string,
   kind: "photo" | "video",
   file: File
-): Promise<{ objectKey: string; url: string } | null> {
+): Promise<{ objectKey: string; url: string } | "too_large" | null> {
   const form = new FormData();
   form.append("file", file);
   const url = `${publicApiUrl("/catches/media/upload")}?kind=${encodeURIComponent(kind)}`;
@@ -51,6 +51,7 @@ async function uploadCatchEvidence(
       headers: { Authorization: `Bearer ${token}` },
       body: form
     });
+    if (res.status === 413) return "too_large";
     if (!res.ok) return null;
     const j = (await res.json()) as { objectKey?: string; url?: string };
     const objectKey = j.objectKey?.trim();
@@ -364,10 +365,11 @@ export default function NewCatchPage() {
       const mediaParts: { type: "photo" | "video"; objectKey: string; url: string }[] = [];
       let photoUploadFailed = false;
       let videoUploadFailed = false;
+      let videoTooLarge = false;
 
       if (photoFile) {
         const up = await uploadCatchEvidence(token, "photo", photoFile);
-        if (up) mediaParts.push({ type: "photo", objectKey: up.objectKey, url: up.url });
+        if (up && up !== "too_large") mediaParts.push({ type: "photo", objectKey: up.objectKey, url: up.url });
         else photoUploadFailed = true;
       } else if (effectivePhotoKey && effectivePhotoUrl) {
         mediaParts.push({ type: "photo", objectKey: effectivePhotoKey, url: effectivePhotoUrl });
@@ -375,8 +377,13 @@ export default function NewCatchPage() {
 
       if (videoFile) {
         const up = await uploadCatchEvidence(token, "video", videoFile);
-        if (up) mediaParts.push({ type: "video", objectKey: up.objectKey, url: up.url });
-        else videoUploadFailed = true;
+        if (up === "too_large") {
+          videoTooLarge = true;
+        } else if (up) {
+          mediaParts.push({ type: "video", objectKey: up.objectKey, url: up.url });
+        } else {
+          videoUploadFailed = true;
+        }
       } else if (effectiveVideoKey && effectiveVideoUrl) {
         mediaParts.push({ type: "video", objectKey: effectiveVideoKey, url: effectiveVideoUrl });
       }
@@ -412,6 +419,9 @@ export default function NewCatchPage() {
       const userLines: string[] = [];
       if (photoUploadFailed) {
         userLines.push("Catch saved, but photo upload failed. You can retry later.");
+      }
+      if (videoTooLarge) {
+        userLines.push("Catch saved, but video is too large. Please send it externally to the committee.");
       }
       if (videoUploadFailed) {
         userLines.push("Catch saved, but video upload failed. You can retry later.");

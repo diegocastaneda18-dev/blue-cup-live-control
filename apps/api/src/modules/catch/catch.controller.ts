@@ -1,7 +1,10 @@
 import {
+  Catch,
+  ArgumentsHost,
   BadRequestException,
   Body,
   Controller,
+  ExceptionFilter,
   Get,
   Param,
   Patch,
@@ -9,7 +12,8 @@ import {
   Query,
   UploadedFile,
   UseGuards,
-  UseInterceptors
+  UseInterceptors,
+  UseFilters
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { mkdir, writeFile } from "fs/promises";
@@ -23,6 +27,21 @@ import type { JwtUser } from "@bluecup/types";
 import { AddCatchMediaDto } from "./dto/add-media.dto";
 import { SubmitCatchDto } from "./dto/submit-catch.dto";
 import { CatchService } from "./catch.service";
+
+@Catch()
+class MulterUploadExceptionFilter implements ExceptionFilter {
+  catch(exception: unknown, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const res = ctx.getResponse();
+    const ex = exception as { code?: string; message?: string };
+
+    if (ex?.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({ message: "File too large" });
+    }
+
+    throw exception;
+  }
+}
 
 @Controller("catches")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -59,9 +78,11 @@ export class CatchController {
 
   @Post("media/upload")
   @Roles("captain", "team_member")
+  @UseFilters(new MulterUploadExceptionFilter())
   @UseInterceptors(
     FileInterceptor("file", {
-      limits: { fileSize: 50 * 1024 * 1024 }
+      // Pilot-safe temporary limit: videos can be larger than photos, but we keep a tight cap for now.
+      limits: { fileSize: 20 * 1024 * 1024 }
     })
   )
   async uploadEvidence(
