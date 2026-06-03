@@ -5,10 +5,13 @@ import { useRouter } from "next/navigation";
 import { EmptyState } from "../../../components/EmptyState";
 import {
   btnGhostClass,
+  btnPrimaryClass,
+  btnResponsiveClass,
   contentStackClass,
   fieldInputClass,
   InlineNotice,
   LoadingBlock,
+  MobileQuickActions,
   PageHeader,
   PageMain,
   SectionLabel
@@ -17,7 +20,7 @@ import { useToast } from "../../../components/Toast";
 import { demoDashboardTournaments, isDemoMode, resetDemoData } from "@bluecup/types";
 import { resultsCsvExportUrl } from "../../../lib/adminUtilities";
 import { getPublicApiBaseUrl, publicApiUrl } from "../../../lib/env";
-import { normalizeRole } from "../../../lib/rbac";
+import { navLinksForRole, normalizeRole } from "../../../lib/rbac";
 import { useCallback, useEffect, useState } from "react";
 
 const ACCESS_TOKEN_KEY = "accessToken";
@@ -251,7 +254,11 @@ export default function DashboardPage() {
       <PageHeader
         kicker="Command center"
         title="Dashboard"
-        description="Account overview, tournament roster context, and admin export tools when you have access."
+        description="Your tournament hub — account status, quick actions, and live roster context."
+      />
+
+      <MobileQuickActions
+        links={navLinksForRole(user.role).filter((link) => link.href !== "/dashboard")}
       />
 
       <div className={contentStackClass}>
@@ -290,8 +297,8 @@ export default function DashboardPage() {
                 <span className="font-mono text-[11px] text-slate-300">GET /exports/:tournamentId/results.csv</span>{" "}
                 (authenticated).
               </p>
-              <div className="mt-5 grid gap-4 sm:flex sm:flex-wrap sm:items-end">
-                <label className="grid min-w-[220px] flex-1 gap-2 text-sm">
+              <div className="mt-5 grid gap-4">
+                <label className="grid gap-2 text-sm">
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                     Tournament for export
                   </span>
@@ -320,7 +327,7 @@ export default function DashboardPage() {
                   type="button"
                   disabled={exportPending || tournaments.length === 0 || !exportTournamentId}
                   onClick={() => void downloadResultsCsv()}
-                  className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-950/50 transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  className={`min-h-11 rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-950/50 transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50 ${btnResponsiveClass}`}
                 >
                   {exportPending ? "Preparing file…" : "Download results CSV"}
                 </button>
@@ -361,7 +368,7 @@ export default function DashboardPage() {
                   toast.success("Demo data reset — reloading.");
                   window.setTimeout(() => resetDemoData(), 450);
                 }}
-                className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/15 px-4 py-2.5 text-sm font-semibold text-amber-100 shadow-md shadow-amber-950/30 transition hover:bg-amber-500/25"
+                className={`mt-4 min-h-11 rounded-xl border border-amber-500/40 bg-amber-500/15 px-4 py-3 text-sm font-semibold text-amber-100 shadow-md shadow-amber-950/30 transition hover:bg-amber-500/25 ${btnResponsiveClass}`}
               >
                 Reset demo data
               </button>

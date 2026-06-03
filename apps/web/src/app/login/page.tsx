@@ -1,6 +1,13 @@
 "use client";
 
 import { Card } from "@bluecup/ui";
+import {
+  btnPrimaryClass,
+  btnResponsiveClass,
+  fieldInputClass,
+  formStackClass,
+  InlineNotice
+} from "../../components/PageChrome";
 import { getPublicApiBaseUrl } from "../../lib/env";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -58,39 +65,38 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-0px)] max-w-md flex-col justify-center p-6">
+    <main className="mx-auto flex min-h-[100dvh] max-w-md flex-col justify-center px-4 py-8 pb-[env(safe-area-inset-bottom)] sm:px-6">
       <div className="mb-8 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Sign in</h1>
-        <p className="mt-2 text-sm text-slate-400">Blue Cup Live Control</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-400/90">Las Marías Blue Cup</p>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">Sign in</h1>
+        <p className="mt-2 text-sm leading-relaxed text-slate-400">
+          Log catches, check standings, and stay on the water — no laptop required.
+        </p>
       </div>
 
-      <Card title="Account">
-        <form className="grid gap-4" onSubmit={onSubmit}>
-          {error ? (
-            <div
-              className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-100"
-              role="alert"
-            >
-              {error}
-            </div>
-          ) : null}
+      <Card title="Your account">
+        <form className={formStackClass} onSubmit={onSubmit}>
+          {error ? <InlineNotice variant="error">{error}</InlineNotice> : null}
 
-          <label className="grid gap-1.5 text-sm">
-            <span className="font-medium text-slate-300">Email</span>
+          <label className="grid gap-2 text-sm">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Email</span>
             <input
               type="email"
               name="email"
               autoComplete="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              inputMode="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-slate-100 outline-none ring-sky-500/40 placeholder:text-slate-500 focus:ring-2"
+              className={fieldInputClass}
               placeholder="you@example.com"
             />
           </label>
 
-          <label className="grid gap-1.5 text-sm">
-            <span className="font-medium text-slate-300">Password</span>
+          <label className="grid gap-2 text-sm">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Password</span>
             <input
               type="password"
               name="password"
@@ -99,7 +105,7 @@ export default function LoginPage() {
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-slate-100 outline-none ring-sky-500/40 placeholder:text-slate-500 focus:ring-2"
+              className={fieldInputClass}
               placeholder="••••••••"
             />
           </label>
@@ -107,7 +113,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={pending}
-            className="mt-1 rounded-lg bg-amber-500/90 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+            className={`${btnPrimaryClass} ${btnResponsiveClass}`}
           >
             {pending ? "Signing in…" : "Sign in"}
           </button>

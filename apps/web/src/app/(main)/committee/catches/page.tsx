@@ -5,8 +5,11 @@ import { CatchStatusBadge } from "../../../../components/CatchStatusBadge";
 import { EmptyState } from "../../../../components/EmptyState";
 import {
   btnGhostClass,
+  btnResponsiveClass,
   contentStackClass,
+  FieldGroup,
   fieldInputClass,
+  FormField,
   InlineNotice,
   LoadingBlock,
   PageHeader,
@@ -334,10 +337,7 @@ export default function CommitteeCatchesPage() {
           <div>
             <SectionLabel className="mb-3 text-slate-500">Tournament scope</SectionLabel>
             <Card title="Select tournament">
-            <label className="grid gap-2 text-sm">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                Queue context
-              </span>
+            <FormField label="Queue context">
               <select
                 value={tournamentId}
                 onChange={(e) => setTournamentId(e.target.value)}
@@ -349,7 +349,7 @@ export default function CommitteeCatchesPage() {
                   </option>
                 ))}
               </select>
-            </label>
+            </FormField>
           </Card>
           </div>
         ) : null}
@@ -407,39 +407,34 @@ export default function CommitteeCatchesPage() {
                       </div>
                     </dl>
 
-                    <label className="grid gap-2">
-                      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                        Review notes <span className="font-normal normal-case text-slate-600">(optional)</span>
-                      </span>
-                      <textarea
-                        rows={2}
-                        value={notesByCatch[c.id] ?? ""}
-                        onChange={(e) =>
-                          setNotesByCatch((prev) => ({ ...prev, [c.id]: e.target.value }))
-                        }
-                        className={`${fieldInputClass} resize-y`}
-                        placeholder="Notes for the audit trail…"
-                      />
-                    </label>
+                    <FieldGroup title="Committee decision">
+                      <FormField label="Review notes" optional hint="Saved to the audit trail.">
+                        <textarea
+                          rows={3}
+                          value={notesByCatch[c.id] ?? ""}
+                          onChange={(e) =>
+                            setNotesByCatch((prev) => ({ ...prev, [c.id]: e.target.value }))
+                          }
+                          className={`${fieldInputClass} resize-y`}
+                          placeholder="Notes for the audit trail…"
+                        />
+                      </FormField>
 
-                    <div className="flex flex-wrap items-end gap-3">
-                      <label className="grid gap-2">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                          Penalty points <span className="font-normal normal-case text-slate-600">(penalize)</span>
-                        </span>
+                      <FormField label="Penalty points" optional hint="Required when you choose Penalize.">
                         <input
                           type="number"
                           min={1}
+                          inputMode="numeric"
                           value={penaltyByCatch[c.id] ?? ""}
                           onChange={(e) =>
                             setPenaltyByCatch((prev) => ({ ...prev, [c.id]: e.target.value }))
                           }
-                          className={`${fieldInputClass} w-32 sm:w-36`}
+                          className={`${fieldInputClass} max-w-xs`}
                         />
-                      </label>
-                    </div>
+                      </FormField>
+                    </FieldGroup>
 
-                    <div className="flex flex-wrap gap-2 border-t border-white/[0.06] pt-4">
+                    <div className="grid grid-cols-2 gap-2 border-t border-white/[0.06] pt-4 sm:flex sm:flex-wrap">
                       {(
                         [
                           ["approve", "Approve"],
@@ -455,10 +450,10 @@ export default function CommitteeCatchesPage() {
                           onClick={() => void submitReview(c.id, action)}
                           className={
                             action === "approve"
-                              ? "rounded-xl bg-emerald-600/90 px-3.5 py-2.5 text-xs font-semibold text-white shadow-md shadow-emerald-950/30 hover:bg-emerald-500 disabled:opacity-50"
+                              ? `min-h-11 rounded-xl bg-emerald-600/90 px-3 py-2.5 text-xs font-semibold text-white shadow-md shadow-emerald-950/30 hover:bg-emerald-500 disabled:opacity-50 sm:px-4 sm:text-sm ${btnResponsiveClass}`
                               : action === "reject"
-                                ? "rounded-xl border border-red-400/40 bg-red-500/15 px-3.5 py-2.5 text-xs font-semibold text-red-100 hover:bg-red-500/25 disabled:opacity-50"
-                                : "rounded-xl border border-white/[0.12] bg-white/[0.04] px-3.5 py-2.5 text-xs font-semibold text-slate-100 hover:border-sky-500/25 hover:bg-sky-500/10 disabled:opacity-50"
+                                ? `min-h-11 rounded-xl border border-red-400/40 bg-red-500/15 px-3 py-2.5 text-xs font-semibold text-red-100 hover:bg-red-500/25 disabled:opacity-50 sm:px-4 sm:text-sm ${btnResponsiveClass}`
+                                : `min-h-11 rounded-xl border border-white/[0.12] bg-white/[0.04] px-3 py-2.5 text-xs font-semibold text-slate-100 hover:border-sky-500/25 hover:bg-sky-500/10 disabled:opacity-50 sm:px-4 sm:text-sm ${btnResponsiveClass}`
                           }
                         >
                           {actingId === c.id ? "Working…" : label}

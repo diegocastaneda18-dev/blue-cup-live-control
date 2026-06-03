@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import { MobileBottomNav } from "../../components/MobileBottomNav";
 import { publicApiUrl } from "../../lib/env";
 import { isPathAllowedForRole, navLinksForRole } from "../../lib/rbac";
 
 const ACCESS_TOKEN_KEY = "accessToken";
 const API_ME = publicApiUrl("/auth/me");
+/** Static asset in `apps/web/public/` — use `.svg` instead if that is the file you ship. */
+const LAS_MARIAS_LOGO_SRC = "/las-marias-blue-cup-logo.png";
 
 type MeUser = { email: string; role: string };
 
@@ -97,28 +100,54 @@ export default function MainLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-slate-950/95 shadow-[0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Blue Cup
-            </span>
+    <div className="min-h-screen bg-slate-950 pb-mobile-nav lg:pb-0">
+      <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-slate-950/95 shadow-[0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-md supports-[padding:max(0px)]:pt-[env(safe-area-inset-top)]">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+          <div className="flex min-w-0 flex-1 items-center justify-between gap-3 lg:flex-col lg:items-stretch lg:justify-start lg:gap-2.5">
+            <Link
+              href="/dashboard"
+              className="flex min-w-0 w-fit shrink-0 items-center gap-2.5 rounded-lg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-amber-400/40"
+            >
+              <img
+                src={LAS_MARIAS_LOGO_SRC}
+                alt="Las Marías Blue Cup"
+                className="h-8 w-auto max-w-[7.5rem] object-contain object-left sm:h-9 sm:max-w-[8.5rem]"
+                width={136}
+                height={36}
+                decoding="async"
+              />
+              <span className="hidden text-sm font-semibold tracking-tight text-slate-100 sm:inline">
+                Las Marías Blue Cup
+              </span>
+            </Link>
             {user ? (
-              <div className="flex flex-col rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs sm:flex-row sm:items-baseline sm:gap-3">
-                <span className="text-slate-400">
-                  Signed in as{" "}
-                  <span className="font-medium text-slate-100">{user.email}</span>
-                </span>
-                <span className="text-slate-500">
-                  Role:{" "}
-                  <span className="font-medium capitalize text-amber-100/90">{user.role}</span>
-                </span>
-              </div>
+              <span className="truncate rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[10px] font-medium capitalize text-amber-100/90 lg:hidden">
+                {user.role}
+              </span>
             ) : null}
+            <button
+              type="button"
+              onClick={logout}
+              className="min-h-11 shrink-0 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-white/10 lg:hidden"
+            >
+              Log out
+            </button>
           </div>
 
-          <nav className="flex flex-1 flex-wrap items-center gap-x-1 gap-y-2 lg:justify-center">
+          {user ? (
+            <div className="hidden rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs sm:block sm:flex-row sm:items-baseline sm:gap-3 lg:flex">
+              <span className="text-slate-400">
+                Signed in as{" "}
+                <span className="font-medium text-slate-100">{user.email}</span>
+              </span>
+              <span className="text-slate-500">
+                Role:{" "}
+                <span className="font-medium capitalize text-amber-100/90">{user.role}</span>
+              </span>
+            </div>
+          ) : null}
+
+          <nav className="hidden flex-1 flex-wrap items-center gap-x-1 gap-y-2 lg:flex lg:justify-center">
             {navLinks.map(({ href, label }) => {
               const active =
                 pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
@@ -126,7 +155,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
                 <Link
                   key={href}
                   href={href}
-                  className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors ${
+                  className={`min-h-10 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                     active
                       ? "bg-amber-500/15 text-amber-100 ring-1 ring-amber-400/25"
                       : "text-slate-300 hover:bg-white/5 hover:text-slate-50"
@@ -138,11 +167,11 @@ export default function MainLayout({ children }: { children: ReactNode }) {
             })}
           </nav>
 
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <div className="hidden shrink-0 flex-wrap items-center justify-end gap-2 lg:flex">
             <button
               type="button"
               onClick={logout}
-              className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-white/10"
+              className="min-h-10 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-white/10"
             >
               Log out
             </button>
@@ -161,6 +190,8 @@ export default function MainLayout({ children }: { children: ReactNode }) {
       ) : (
         children
       )}
+
+      <MobileBottomNav links={navLinks} pathname={pathname} />
     </div>
   );
 }

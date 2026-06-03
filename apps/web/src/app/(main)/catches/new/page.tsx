@@ -3,6 +3,22 @@
 import { Card } from "@bluecup/ui";
 import { useToast } from "../../../../components/Toast";
 import {
+  btnGhostClass,
+  btnPrimaryClass,
+  btnResponsiveClass,
+  contentStackClass,
+  FieldGroup,
+  fieldInputClass,
+  FormField,
+  formStackClass,
+  InlineNotice,
+  LoadingBlock,
+  PageHeader,
+  PageMain,
+  SectionLabel,
+  StickyFormActions
+} from "../../../../components/PageChrome";
+import {
   DEMO_TOURNAMENT_ID,
   demoTeamsSimpleForNewCatch,
   demoTournamentDetail,
@@ -99,6 +115,7 @@ export default function NewCatchPage() {
   const [submitting, setSubmitting] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [createdId, setCreatedId] = useState<string | null>(null);
+  const [showAdvancedMedia, setShowAdvancedMedia] = useState(false);
 
   useEffect(() => {
     const t = typeof window !== "undefined" ? localStorage.getItem(ACCESS_TOKEN_KEY) : null;
@@ -457,29 +474,17 @@ export default function NewCatchPage() {
 
   if (!authReady) {
     return (
-      <main className="mx-auto max-w-2xl p-6">
-        <div className="flex flex-col items-center gap-3 py-16">
-          <div
-            className="h-9 w-9 animate-spin rounded-full border-2 border-amber-400/25 border-t-amber-400"
-            aria-hidden
-          />
-          <p className="text-sm text-slate-400">Preparing form…</p>
-        </div>
-      </main>
+      <PageMain className="max-w-2xl">
+        <LoadingBlock label="Preparing form…" />
+      </PageMain>
     );
   }
 
   if (!token) {
     return (
-      <main className="mx-auto max-w-2xl p-6">
-        <div className="flex flex-col items-center gap-3 py-16">
-          <div
-            className="h-9 w-9 animate-spin rounded-full border-2 border-amber-400/25 border-t-amber-400"
-            aria-hidden
-          />
-          <p className="text-sm text-slate-400">Redirecting to sign in…</p>
-        </div>
-      </main>
+      <PageMain className="max-w-2xl">
+        <LoadingBlock label="Redirecting to sign in…" />
+      </PageMain>
     );
   }
 
@@ -487,259 +492,272 @@ export default function NewCatchPage() {
   const speciesList = detail?.species ?? [];
 
   return (
-    <main className="mx-auto max-w-2xl p-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-50">Submit a catch</h1>
-          <p className="mt-2 text-slate-300">Log a catch for your team in the selected tournament.</p>
-        </div>
-        <Link
-          href="/catches"
-          className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-white/10"
-        >
-          Catch history
-        </Link>
-      </div>
+    <PageMain className="max-w-2xl">
+      <PageHeader
+        kicker="On the water"
+        title="Submit a catch"
+        description="Log a catch for your team in the selected tournament."
+        aside={
+          <Link href="/catches" className={`${btnGhostClass} ${btnResponsiveClass}`}>
+            Catch history
+          </Link>
+        }
+      />
 
-      <div className="mt-8 grid gap-6">
-        {tournamentsError ? (
-          <Card title="Tournaments">
-            <p className="text-sm text-red-100">{tournamentsError}</p>
-          </Card>
-        ) : null}
+      <div className={contentStackClass}>
+        {tournamentsError ? <InlineNotice variant="error">{tournamentsError}</InlineNotice> : null}
 
         {createdId ? (
           <Card title="Submitted">
             <p className="text-sm text-emerald-100">Your catch was recorded successfully.</p>
             {mediaError ? (
-              <p className="mt-2 text-sm text-amber-100">{mediaError}</p>
+              <div className="mt-3">
+                <InlineNotice variant="warning">{mediaError}</InlineNotice>
+              </div>
             ) : null}
-            <Link
-              href="/catches"
-              className="mt-3 inline-flex rounded-lg bg-amber-500/90 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-amber-400"
-            >
+            <Link href="/catches" className={`${btnPrimaryClass} ${btnResponsiveClass} mt-4`}>
               View catch history
             </Link>
           </Card>
         ) : null}
 
-        <Card title="Catch details">
-          <form className="grid gap-4" onSubmit={onSubmit}>
-            <label className="grid gap-1.5 text-sm">
-              <span className="font-medium text-slate-300">Tournament</span>
-              <select
-                required
-                value={tournamentId}
-                onChange={(e) => setTournamentId(e.target.value)}
-                className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-slate-100 outline-none ring-sky-500/40 focus:ring-2"
-              >
-                <option value="" disabled>
-                  Select tournament
-                </option>
-                {tournaments.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
+        <div>
+          <SectionLabel className="mb-3 text-slate-500">Catch details</SectionLabel>
+          <Card title="Submission form">
+          <form className={formStackClass} onSubmit={onSubmit}>
+            <FieldGroup title="Tournament" description="Pick the event and category for this catch.">
+              <FormField label="Tournament">
+                <select
+                  required
+                  value={tournamentId}
+                  onChange={(e) => setTournamentId(e.target.value)}
+                  className={fieldInputClass}
+                >
+                  <option value="" disabled>
+                    Select tournament
                   </option>
-                ))}
-              </select>
-            </label>
-
-            {detailError ? <p className="text-sm text-red-100">{detailError}</p> : null}
-
-            <label className="grid gap-1.5 text-sm">
-              <span className="font-medium text-slate-300">Category</span>
-              <select
-                required
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                disabled={!tournamentId || categories.length === 0}
-                className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-slate-100 outline-none ring-sky-500/40 focus:ring-2 disabled:opacity-50"
-              >
-                {categories.length === 0 ? (
-                  <option value="">No categories (check tournament)</option>
-                ) : (
-                  categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.code})
+                  {tournaments.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
                     </option>
-                  ))
-                )}
-              </select>
-            </label>
+                  ))}
+                </select>
+              </FormField>
 
-            <label className="grid gap-1.5 text-sm">
-              <span className="font-medium text-slate-300">Species (optional)</span>
-              <select
-                value={speciesId}
-                onChange={(e) => setSpeciesId(e.target.value)}
-                disabled={!tournamentId || speciesList.length === 0}
-                className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-slate-100 outline-none ring-sky-500/40 focus:ring-2 disabled:opacity-50"
-              >
-                <option value="">None</option>
-                {speciesList.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.code})
-                  </option>
-                ))}
-              </select>
-            </label>
+              {detailError ? <InlineNotice variant="error">{detailError}</InlineNotice> : null}
 
-            <label className="grid gap-1.5 text-sm">
-              <span className="font-medium text-slate-300">Catch type</span>
-              <select
-                required
-                value={type}
-                onChange={(e) => setType(e.target.value as "release" | "weigh_in")}
-                className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-slate-100 outline-none ring-sky-500/40 focus:ring-2"
-              >
-                <option value="release">Release</option>
-                <option value="weigh_in">Weigh-in</option>
-              </select>
-            </label>
+              <FormField label="Category">
+                <select
+                  required
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  disabled={!tournamentId || categories.length === 0}
+                  className={fieldInputClass}
+                >
+                  {categories.length === 0 ? (
+                    <option value="">No categories (check tournament)</option>
+                  ) : (
+                    categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.code})
+                      </option>
+                    ))
+                  )}
+                </select>
+              </FormField>
 
-            <label className="grid gap-1.5 text-sm">
-              <span className="font-medium text-slate-300">Occurred at (optional, local)</span>
-              <input
-                type="datetime-local"
-                value={occurredAtClient}
-                onChange={(e) => setOccurredAtClient(e.target.value)}
-                className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-slate-100 outline-none ring-sky-500/40 focus:ring-2"
-              />
-            </label>
+              <FormField label="Species" optional>
+                <select
+                  value={speciesId}
+                  onChange={(e) => setSpeciesId(e.target.value)}
+                  disabled={!tournamentId || speciesList.length === 0}
+                  className={fieldInputClass}
+                >
+                  <option value="">None</option>
+                  {speciesList.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.code})
+                    </option>
+                  ))}
+                </select>
+              </FormField>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="grid gap-1.5 text-sm">
-                <span className="font-medium text-slate-300">Weight (kg, optional)</span>
+              <FormField label="Catch type">
+                <select
+                  required
+                  value={type}
+                  onChange={(e) => setType(e.target.value as "release" | "weigh_in")}
+                  className={fieldInputClass}
+                >
+                  <option value="release">Release</option>
+                  <option value="weigh_in">Weigh-in</option>
+                </select>
+              </FormField>
+            </FieldGroup>
+
+            <FieldGroup title="Measurements" description="Add weight or length when available.">
+              <FormField label="Occurred at" optional hint="Local time on the boat.">
+                <input
+                  type="datetime-local"
+                  value={occurredAtClient}
+                  onChange={(e) => setOccurredAtClient(e.target.value)}
+                  className={fieldInputClass}
+                />
+              </FormField>
+
+              <FormField label="Weight (kg)" optional>
                 <input
                   type="number"
                   min={0}
                   step="0.01"
+                  inputMode="decimal"
                   value={weightKg}
                   onChange={(e) => setWeightKg(e.target.value)}
-                  className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-slate-100 outline-none ring-sky-500/40 focus:ring-2"
+                  className={fieldInputClass}
                 />
-              </label>
-              <label className="grid gap-1.5 text-sm">
-                <span className="font-medium text-slate-300">Length (cm, optional)</span>
+              </FormField>
+
+              <FormField label="Length (cm)" optional>
                 <input
                   type="number"
                   min={0}
                   step="0.01"
+                  inputMode="decimal"
                   value={lengthCm}
                   onChange={(e) => setLengthCm(e.target.value)}
-                  className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-slate-100 outline-none ring-sky-500/40 focus:ring-2"
+                  className={fieldInputClass}
                 />
-              </label>
-            </div>
+              </FormField>
 
-            <label className="grid gap-1.5 text-sm">
-              <span className="font-medium text-slate-300">Notes (optional)</span>
-              <textarea
-                rows={3}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="resize-y rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-slate-100 outline-none ring-sky-500/40 focus:ring-2"
-                placeholder="Optional details for the committee…"
-              />
-            </label>
+              <FormField label="Notes" optional hint="Anything the committee should know.">
+                <textarea
+                  rows={4}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className={`${fieldInputClass} resize-y`}
+                  placeholder="Optional details for the committee…"
+                />
+              </FormField>
+            </FieldGroup>
 
-            <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Media evidence (optional)</p>
-              <p className="mt-1 text-xs text-slate-500">
-                Optional: choose a photo or video file (uploaded when you submit), or paste both a public HTTPS URL and
-                storage object key. Incomplete pairs are ignored so your catch can still be saved.
-              </p>
+            <FieldGroup
+              title="Photo & video"
+              description="Tap to capture evidence from your phone. Upload happens when you submit."
+            >
+              <FormField label="Photo" optional>
+                <input
+                  key={photoEvidenceInputKey}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="min-h-11 w-full text-sm text-slate-400 file:mr-3 file:min-h-11 file:rounded-xl file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-slate-200"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] ?? null;
+                    setPhotoFile(f);
+                    setPhotoObjectKey("");
+                    setPhotoUrl("");
+                  }}
+                />
+              </FormField>
 
-              <div className="mt-4 grid gap-4">
-                <div className="grid gap-2">
-                  <span className="text-sm font-medium text-slate-300">Photo</span>
-                  <input
-                    key={photoEvidenceInputKey}
-                    type="file"
-                    accept="image/*"
-                    className="text-xs text-slate-400 file:mr-2 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-slate-200"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0] ?? null;
-                      setPhotoFile(f);
-                      setPhotoObjectKey("");
-                      setPhotoUrl("");
-                    }}
-                  />
+              <FormField label="Video" optional hint="Large clips may need to be sent to the committee separately.">
+                <input
+                  key={videoEvidenceInputKey}
+                  type="file"
+                  accept="video/*"
+                  capture="environment"
+                  className="min-h-11 w-full text-sm text-slate-400 file:mr-3 file:min-h-11 file:rounded-xl file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-slate-200"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] ?? null;
+                    setVideoFile(f);
+                    setVideoObjectKey("");
+                    setVideoUrl("");
+                  }}
+                />
+              </FormField>
+
+              <button
+                type="button"
+                onClick={() => setShowAdvancedMedia((v) => !v)}
+                className={`${btnGhostClass} ${btnResponsiveClass} text-xs sm:hidden`}
+              >
+                {showAdvancedMedia ? "Hide URL fields" : "Paste URL / object key instead"}
+              </button>
+
+              <div className={`grid gap-5 ${showAdvancedMedia ? "" : "hidden sm:grid"}`}>
+                <FormField label="Photo object key" optional>
                   <input
                     type="text"
                     value={photoObjectKey}
                     onChange={(e) => setPhotoObjectKey(e.target.value)}
-                    className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-100 outline-none ring-sky-500/40 focus:ring-2"
-                    placeholder="Object key (e.g. mock/photo.jpg)"
+                    className={fieldInputClass}
+                    placeholder="e.g. mock/photo.jpg"
                   />
+                </FormField>
+                <FormField label="Photo URL" optional>
                   <input
                     type="url"
                     value={photoUrl}
                     onChange={(e) => setPhotoUrl(e.target.value)}
-                    className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-100 outline-none ring-sky-500/40 focus:ring-2"
-                    placeholder="https://… (public image URL)"
+                    className={fieldInputClass}
+                    placeholder="https://…"
                   />
-                </div>
-                <div className="grid gap-2">
-                  <span className="text-sm font-medium text-slate-300">Video</span>
-                  <input
-                    key={videoEvidenceInputKey}
-                    type="file"
-                    accept="video/*"
-                    className="text-xs text-slate-400 file:mr-2 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-slate-200"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0] ?? null;
-                      setVideoFile(f);
-                      setVideoObjectKey("");
-                      setVideoUrl("");
-                    }}
-                  />
+                </FormField>
+                <FormField label="Video object key" optional>
                   <input
                     type="text"
                     value={videoObjectKey}
                     onChange={(e) => setVideoObjectKey(e.target.value)}
-                    className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-100 outline-none ring-sky-500/40 focus:ring-2"
-                    placeholder="Object key (e.g. mock/clip.mp4)"
+                    className={fieldInputClass}
+                    placeholder="e.g. mock/clip.mp4"
                   />
+                </FormField>
+                <FormField label="Video URL" optional>
                   <input
                     type="url"
                     value={videoUrl}
                     onChange={(e) => setVideoUrl(e.target.value)}
-                    className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-100 outline-none ring-sky-500/40 focus:ring-2"
-                    placeholder="https://… (public video URL)"
+                    className={fieldInputClass}
+                    placeholder="https://…"
                   />
-                </div>
+                </FormField>
               </div>
-            </div>
+            </FieldGroup>
 
-            <button
-              type="submit"
-              disabled={submitting || !tournamentId || !categoryId}
-              className="rounded-lg bg-amber-500/90 px-4 py-2.5 text-sm font-semibold text-slate-950 hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {submitting ? "Submitting…" : "Submit catch"}
-            </button>
+            <StickyFormActions>
+              <button
+                type="submit"
+                disabled={submitting || !tournamentId || !categoryId}
+                className={`${btnPrimaryClass} ${btnResponsiveClass}`}
+              >
+                {submitting ? "Submitting…" : "Submit catch"}
+              </button>
+            </StickyFormActions>
           </form>
-        </Card>
+          </Card>
+        </div>
 
-        <Card title="Teams in this tournament">
+        <div>
+          <SectionLabel className="mb-3 text-slate-500">Teams in tournament</SectionLabel>
+          <Card title="Registered crews">
           {teamsError ? (
-            <p className="text-sm text-red-100">{teamsError}</p>
+            <InlineNotice variant="error">{teamsError}</InlineNotice>
           ) : !tournamentId ? (
-            <p className="text-sm text-slate-200">Select a tournament to load teams.</p>
+            <p className="text-sm leading-relaxed text-slate-400">Select a tournament to load teams.</p>
           ) : teams.length === 0 ? (
-            <p className="text-sm text-slate-200">No teams listed for this tournament.</p>
+            <p className="text-sm leading-relaxed text-slate-400">No teams listed for this tournament.</p>
           ) : (
-            <ul className="divide-y divide-white/10 text-sm text-slate-200">
+            <ul className="divide-y divide-white/[0.06] text-sm text-slate-200">
               {teams.map((t) => (
-                <li key={t.id} className="py-2">
+                <li key={t.id} className="min-h-11 py-3">
                   {t.name}
                 </li>
               ))}
             </ul>
           )}
-        </Card>
+          </Card>
+        </div>
       </div>
-    </main>
+    </PageMain>
   );
 }

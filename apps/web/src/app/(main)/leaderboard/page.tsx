@@ -5,9 +5,11 @@ import { useCallback, useEffect, useState } from "react";
 import { EmptyState } from "../../../components/EmptyState";
 import {
   btnGhostClass,
+  btnResponsiveClass,
   cardListShellClass,
   contentStackClass,
   fieldInputClass,
+  FormField,
   InlineNotice,
   LoadingBlock,
   PageHeader,
@@ -198,7 +200,7 @@ export default function LeaderboardPage() {
         {tournamentsError ? (
           <div className="space-y-3">
             <InlineNotice variant="error">{tournamentsError}</InlineNotice>
-            <button type="button" onClick={() => void loadTournaments()} className={btnGhostClass}>
+            <button type="button" onClick={() => void loadTournaments()} className={`${btnGhostClass} ${btnResponsiveClass}`}>
               Retry loading tournaments
             </button>
           </div>
@@ -219,10 +221,7 @@ export default function LeaderboardPage() {
           <div>
             <SectionLabel className="mb-3 text-slate-500">Tournament scope</SectionLabel>
             <Card title="Select tournament">
-              <label className="grid gap-2 text-sm">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Active leaderboard
-                </span>
+              <FormField label="Active leaderboard">
                 <select
                   value={selectedId}
                   onChange={(e) => setSelectedId(e.target.value)}
@@ -234,7 +233,7 @@ export default function LeaderboardPage() {
                     </option>
                   ))}
                 </select>
-              </label>
+              </FormField>
             </Card>
           </div>
         ) : null}
@@ -247,7 +246,7 @@ export default function LeaderboardPage() {
             ) : rowsError ? (
               <div className="space-y-3">
                 <InlineNotice variant="error">{rowsError}</InlineNotice>
-                <button type="button" onClick={() => void loadBoard({ silent: false })} className={btnGhostClass}>
+                <button type="button" onClick={() => void loadBoard({ silent: false })} className={`${btnGhostClass} ${btnResponsiveClass}`}>
                   Retry standings
                 </button>
               </div>
@@ -261,7 +260,24 @@ export default function LeaderboardPage() {
                 description="No teams or no scored catches for this tournament yet."
               />
             ) : (
-              <div className={cardListShellClass}>
+              <>
+                <ul className={`divide-y divide-white/[0.06] sm:hidden ${cardListShellClass}`}>
+                  {ranked.map((r) => (
+                    <li key={`${selectedId}-${r.rank}-${r.teamName}-mobile`} className="flex items-center gap-3 px-4 py-4">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-amber-400/30 bg-amber-500/10 text-sm font-bold tabular-nums text-amber-100">
+                        {r.rank}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-slate-50">{r.teamName}</p>
+                        <p className="text-xs text-slate-500">Official line score</p>
+                      </div>
+                      <span className="shrink-0 text-lg font-semibold tabular-nums text-slate-50">
+                        {r.score.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <div className={`hidden sm:block ${cardListShellClass}`}>
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-white/[0.06] bg-white/[0.04] text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                     <tr>
@@ -285,7 +301,8 @@ export default function LeaderboardPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+                </div>
+              </>
             )}
           </Card>
         </div>

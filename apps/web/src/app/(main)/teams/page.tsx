@@ -5,7 +5,13 @@ import { EmptyState } from "../../../components/EmptyState";
 import {
   cardListShellClass,
   contentStackClass,
+  FieldGroup,
   fieldInputClass,
+  FormField,
+  btnGhostClass,
+  btnPrimaryClass,
+  btnResponsiveClass,
+  formStackClass,
   InlineNotice,
   LoadingBlock,
   PageHeader,
@@ -21,6 +27,7 @@ import { useCallback, useEffect, useState } from "react";
 const ACCESS_TOKEN_KEY = "accessToken";
 const API_TOURNAMENTS = publicApiUrl("/tournaments");
 const API_TEAMS = publicApiUrl("/teams");
+const API_TEAM_BOAT = publicApiUrl("/teams/boat");
 
 type Tournament = { id: string; name: string };
 
@@ -72,9 +79,18 @@ export default function TeamsPage() {
 
   const [newName, setNewName] = useState("");
   const [captainUserId, setCaptainUserId] = useState("");
+  const [newBoatName, setNewBoatName] = useState("");
+  const [newBoatRegistry, setNewBoatRegistry] = useState("");
   const [formPending, setFormPending] = useState(false);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [formBoatWarning, setFormBoatWarning] = useState<string | null>(null);
+
+  const [editingBoatTeamId, setEditingBoatTeamId] = useState<string | null>(null);
+  const [editBoatName, setEditBoatName] = useState("");
+  const [editBoatRegistry, setEditBoatRegistry] = useState("");
+  const [boatEditPending, setBoatEditPending] = useState(false);
+  const [boatEditError, setBoatEditError] = useState<string | null>(null);
 
   const refreshTokenState = useCallback(() => {
     setHasToken(Boolean(typeof window !== "undefined" && localStorage.getItem(ACCESS_TOKEN_KEY)));
@@ -144,6 +160,11 @@ export default function TeamsPage() {
   useEffect(() => {
     setFormSuccess(null);
     setFormError(null);
+    setFormBoatWarning(null);
+    setNewBoatName("");
+    setNewBoatRegistry("");
+    setEditingBoatTeamId(null);
+    setBoatEditError(null);
   }, [selectedId]);
 
   useEffect(() => {
@@ -206,10 +227,68 @@ export default function TeamsPage() {
     };
   }, [selectedId, router, refreshTokenState]);
 
+  async function refreshTeamsList(token: string, tournamentId: string) {
+    const url = `${API_TEAMS}/tournament/${encodeURIComponent(tournamentId)}`;
+    const listRes = await fetch(url, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+    if (listRes.ok) {
+      const data = (await listRes.json()) as unknown;
+      setTeams(Array.isArray(data) ? (data as TeamRow[]) : []);
+    }
+  }
+
+  async function saveBoatForTeam(teamId: string) {
+    const token = typeof window !== "undefined" ? localStorage.getItem(ACCESS_TOKEN_KEY) : null;
+    if (!token) {
+      setBoatEditError("Sign in to save boat details.");
+      return;
+    }
+    const name = editBoatName.trim();
+    if (name.length < 2) {
+      setBoatEditError("Boat name must be at least 2 characters.");
+      return;
+    }
+    const reg = editBoatRegistry.trim();
+    setBoatEditPending(true);
+    setBoatEditError(null);
+    try {
+      const body: { teamId: string; name: string; registry?: string } = { teamId, name };
+      if (reg) body.registry = reg;
+      const res = await fetch(API_TEAM_BOAT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+      });
+      const raw = (await res.json().catch(() => null)) as { message?: string | string[] } | null;
+      if (res.status === 401) {
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        refreshTokenState();
+        router.replace("/login");
+        return;
+      }
+      if (!res.ok) {
+        const msg = raw?.message;
+        const text = Array.isArray(msg) ? msg.join(" ") : msg;
+        setBoatEditError(text || `Boat save failed (${res.status}).`);
+        return;
+      }
+      toast.success("Boat details saved.");
+      setEditingBoatTeamId(null);
+      await refreshTeamsList(token, selectedId);
+    } catch {
+      setBoatEditError(`Could not reach the API at ${getPublicApiBaseUrl()}.`);
+    } finally {
+      setBoatEditPending(false);
+    }
+  }
+
   async function onCreateTeam(e: React.FormEvent) {
     e.preventDefault();
     setFormSuccess(null);
     setFormError(null);
+    setFormBoatWarning(null);
     const token = typeof window !== "undefined" ? localStorage.getItem(ACCESS_TOKEN_KEY) : null;
     if (!token) {
       const msg = "Sign in to create teams (admin account required).";
@@ -248,7 +327,7 @@ export default function TeamsPage() {
         },
         body: JSON.stringify(body)
       });
-      const raw = await res.json().catch(() => null) as { message?: string | string[] } | null;
+      const raw = (await res.json().catch(() => null)) as { id?: string; message?: string | string[] } | null;
       if (res.status === 401) {
         localStorage.removeItem(ACCESS_TOKEN_KEY);
         refreshTokenState();
@@ -263,17 +342,64 @@ export default function TeamsPage() {
         toast.error(errMsg);
         return;
       }
+      const teamId = raw?.id;
+      if (!teamId) {
+        const errMsg = "Team was created but the response had no id; boat details were not saved.";
+        setFormError(errMsg);
+        toast.error(errMsg);
+        await refreshTeamsList(token, selectedId);
+        return;
+      }
+
+      let boatWarning: string | null = null;
+      const boatName = newBoatName.trim();
+      const boatRegistry = newBoatRegistry.trim();
+      if (boatName.length >= 2) {
+        const boatBody: { teamId: string; name: string; registry?: string } = {
+          teamId,
+          name: boatName
+        };
+        if (boatRegistry) boatBody.registry = boatRegistry;
+        const boatRes = await fetch(API_TEAM_BOAT, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(boatBody)
+        });
+        const boatRaw = (await boatRes.json().catch(() => null)) as { message?: string | string[] } | null;
+        if (boatRes.status === 401) {
+          localStorage.removeItem(ACCESS_TOKEN_KEY);
+          refreshTokenState();
+          router.replace("/login");
+          return;
+        }
+        if (!boatRes.ok) {
+          const msg = boatRaw?.message;
+          const text = Array.isArray(msg) ? msg.join(" ") : msg;
+          boatWarning = `The team was saved, but the boat could not be saved: ${text || boatRes.status}. Use “Edit boat” in the roster below to try again.`;
+        }
+      } else if (boatName.length > 0 && boatName.length < 2) {
+        boatWarning =
+          "The team was saved, but the boat was not saved: boat name must be at least 2 characters. Use “Edit boat” in the roster to add boat details.";
+      }
+
       const okMsg = `Team "${name}" was created and added to this tournament.`;
       setFormSuccess(okMsg);
-      toast.success(`Team "${name}" created.`);
+      setFormBoatWarning(boatWarning);
+      if (boatWarning) {
+        toast.success(`Team "${name}" created.`);
+      } else if (boatName.length >= 2) {
+        toast.success(`Team "${name}" created with boat details.`);
+      } else {
+        toast.success(`Team "${name}" created.`);
+      }
       setNewName("");
       setCaptainUserId("");
-      const url = `${API_TEAMS}/tournament/${encodeURIComponent(selectedId)}`;
-      const listRes = await fetch(url, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
-      if (listRes.ok) {
-        const data = (await listRes.json()) as unknown;
-        setTeams(Array.isArray(data) ? (data as TeamRow[]) : []);
-      }
+      setNewBoatName("");
+      setNewBoatRegistry("");
+      await refreshTeamsList(token, selectedId);
     } catch {
       const errMsg = `Could not reach the API at ${getPublicApiBaseUrl()}.`;
       setFormError(errMsg);
@@ -320,10 +446,7 @@ export default function TeamsPage() {
           <div>
             <SectionLabel className="mb-3 text-slate-500">Tournament scope</SectionLabel>
             <Card title="Select tournament">
-              <label className="grid gap-2 text-sm">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Active roster
-                </span>
+              <FormField label="Active roster">
                 <select
                   value={selectedId}
                   onChange={(e) => setSelectedId(e.target.value)}
@@ -335,7 +458,7 @@ export default function TeamsPage() {
                     </option>
                   ))}
                 </select>
-              </label>
+              </FormField>
             </Card>
           </div>
         ) : null}
@@ -348,15 +471,18 @@ export default function TeamsPage() {
                 Sign in with an admin account to create teams. You can still browse the roster below.
               </InlineNotice>
             ) : null}
-            <form className={`grid gap-5 ${!hasToken ? "mt-4" : ""}`} onSubmit={onCreateTeam}>
+            <form className={`${formStackClass} ${!hasToken ? "mt-4" : ""}`} onSubmit={onCreateTeam}>
               {formError ? (
                 <InlineNotice variant="error">{formError}</InlineNotice>
               ) : null}
               {formSuccess ? (
                 <InlineNotice variant="success">{formSuccess}</InlineNotice>
               ) : null}
-              <label className="grid gap-2 text-sm">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Team name</span>
+              {formBoatWarning ? (
+                <InlineNotice variant="warning">{formBoatWarning}</InlineNotice>
+              ) : null}
+
+              <FormField label="Team name">
                 <input
                   required
                   minLength={2}
@@ -365,32 +491,60 @@ export default function TeamsPage() {
                     setNewName(e.target.value);
                     setFormSuccess(null);
                     setFormError(null);
+                    setFormBoatWarning(null);
                   }}
                   className={fieldInputClass}
                   placeholder="Azul Dorado"
                 />
-              </label>
+              </FormField>
 
-              <label className="grid gap-2 text-sm">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Captain user ID <span className="font-normal normal-case text-slate-600">(optional)</span>
-                </span>
+              <FormField label="Captain user ID" optional hint="UUID of an existing user, if known.">
                 <input
                   value={captainUserId}
                   onChange={(e) => {
                     setCaptainUserId(e.target.value);
                     setFormSuccess(null);
                     setFormError(null);
+                    setFormBoatWarning(null);
                   }}
                   className={fieldInputClass}
                   placeholder="UUID of an existing user"
                 />
-              </label>
+              </FormField>
+
+              <FieldGroup title="Boat details" description="Optional — add now or edit from the roster below.">
+                <FormField label="Boat name" optional>
+                  <input
+                    value={newBoatName}
+                    onChange={(e) => {
+                      setNewBoatName(e.target.value);
+                      setFormSuccess(null);
+                      setFormError(null);
+                      setFormBoatWarning(null);
+                    }}
+                    className={fieldInputClass}
+                    placeholder="Sea Hunter"
+                  />
+                </FormField>
+                <FormField label="Registry / hull ID" optional>
+                  <input
+                    value={newBoatRegistry}
+                    onChange={(e) => {
+                      setNewBoatRegistry(e.target.value);
+                      setFormSuccess(null);
+                      setFormError(null);
+                      setFormBoatWarning(null);
+                    }}
+                    className={fieldInputClass}
+                    placeholder="e.g. documentation number"
+                  />
+                </FormField>
+              </FieldGroup>
 
               <button
                 type="submit"
                 disabled={formPending || !selectedId || !hasToken}
-                className="rounded-xl bg-amber-500/90 px-4 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-amber-900/20 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+                className={`${btnPrimaryClass} ${btnResponsiveClass}`}
               >
                 {formPending ? "Creating team…" : "Create team"}
               </button>
@@ -418,7 +572,27 @@ export default function TeamsPage() {
               <ul className={`divide-y divide-white/[0.06] ${cardListShellClass}`}>
                 {teams.map((team) => (
                   <li key={team.id} className="px-4 py-4 transition hover:bg-white/[0.02] sm:px-5 sm:py-5">
-                    <div className="text-base font-semibold tracking-tight text-slate-50">{team.name}</div>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="text-base font-semibold tracking-tight text-slate-50">{team.name}</div>
+                      {hasToken ? (
+                        <button
+                          type="button"
+                          className={`${btnGhostClass} ${btnResponsiveClass} shrink-0 self-stretch text-xs sm:w-auto sm:self-start sm:text-sm`}
+                          onClick={() => {
+                            setBoatEditError(null);
+                            if (editingBoatTeamId === team.id) {
+                              setEditingBoatTeamId(null);
+                            } else {
+                              setEditingBoatTeamId(team.id);
+                              setEditBoatName(team.boat?.name ?? "");
+                              setEditBoatRegistry(team.boat?.registry ?? "");
+                            }
+                          }}
+                        >
+                          {editingBoatTeamId === team.id ? "Close" : team.boat ? "Edit boat" : "Add boat"}
+                        </button>
+                      ) : null}
+                    </div>
                     <dl className="mt-3 grid gap-4 text-sm text-slate-300 sm:grid-cols-2">
                       <div>
                         <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Captain</dt>
@@ -429,6 +603,48 @@ export default function TeamsPage() {
                         <dd className="mt-1 leading-snug text-slate-200">{boatLabel(team)}</dd>
                       </div>
                     </dl>
+                    {editingBoatTeamId === team.id && hasToken ? (
+                      <form
+                        className="mt-4 grid gap-3 rounded-xl border border-white/[0.08] bg-black/25 p-4"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          void saveBoatForTeam(team.id);
+                        }}
+                      >
+                        {boatEditError ? <InlineNotice variant="error">{boatEditError}</InlineNotice> : null}
+                        <label className="grid gap-2 text-sm">
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                            Boat name
+                          </span>
+                          <input
+                            required
+                            minLength={2}
+                            value={editBoatName}
+                            onChange={(e) => setEditBoatName(e.target.value)}
+                            className={fieldInputClass}
+                            placeholder="Sea Hunter"
+                          />
+                        </label>
+                        <label className="grid gap-2 text-sm">
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                            Registry / hull ID <span className="font-normal normal-case text-slate-600">(optional)</span>
+                          </span>
+                          <input
+                            value={editBoatRegistry}
+                            onChange={(e) => setEditBoatRegistry(e.target.value)}
+                            className={fieldInputClass}
+                            placeholder="e.g. documentation number"
+                          />
+                        </label>
+                        <button
+                          type="submit"
+                          disabled={boatEditPending}
+                          className={`${btnPrimaryClass} ${btnResponsiveClass}`}
+                        >
+                          {boatEditPending ? "Saving…" : "Save boat"}
+                        </button>
+                      </form>
+                    ) : null}
                   </li>
                 ))}
               </ul>

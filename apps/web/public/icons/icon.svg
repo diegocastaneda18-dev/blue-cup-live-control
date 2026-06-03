@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Blue Cup Live Control">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="cup" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fcd34d"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="188" fill="none" stroke="#38bdf8" stroke-opacity="0.18" stroke-width="8"/>
+  <path d="M156 176h200c8 0 14 6 14 14v38c0 72-44 132-114 148-70-16-114-76-114-148v-38c0-8 6-14 14-14z" fill="url(#cup)"/>
+  <path d="M176 338h160" stroke="#fbbf24" stroke-width="14" stroke-linecap="round"/>
+  <ellipse cx="256" cy="176" rx="92" ry="18" fill="#fde68a" opacity="0.85"/>
+  <path d="M356 214h28c18 0 32 14 32 32 0 28-22 52-50 56" fill="none" stroke="#f59e0b" stroke-width="16" stroke-linecap="round"/>
+</svg>
