@@ -149,6 +149,18 @@ export class CatchService {
     return c;
   }
 
+  async getCatchById(catchId: string) {
+    const c = await this.prisma.catch.findUnique({
+      where: { id: catchId },
+      include: {
+        ...this.catchDetailInclude(),
+        team: { select: { id: true, name: true } }
+      }
+    });
+    if (!c) throw new NotFoundException("Catch not found");
+    return c;
+  }
+
   async listPendingForCommittee(tournamentId: string) {
     return this.prisma.catch.findMany({
       where: { tournamentId, status: { in: ["pending_review", "more_evidence_required"] } },

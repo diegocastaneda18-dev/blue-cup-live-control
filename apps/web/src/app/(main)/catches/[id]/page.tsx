@@ -3,13 +3,25 @@
 import { Card } from "@bluecup/ui";
 import { CatchStatusBadge } from "../../../../components/CatchStatusBadge";
 import { demoCatchDetailById, isDemoMode } from "@bluecup/types";
-import { publicApiUrl } from "../../../../lib/env";
+import { getPublicApiBaseUrl, publicApiUrl } from "../../../../lib/env";
+import { normalizeRole } from "../../../../lib/rbac";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 const ACCESS_TOKEN_KEY = "accessToken";
+const API_ME = publicApiUrl("/auth/me");
 const API_CATCH = (id: string) => publicApiUrl(`/catches/${encodeURIComponent(id)}`);
+
+function isTeamRole(role: string): boolean {
+  const r = normalizeRole(role);
+  return r === "captain" || r === "team_member";
+}
+
+function isStaffRole(role: string): boolean {
+  const r = normalizeRole(role);
+  return r === "admin" || r === "committee";
+}
 
 type ReviewRow = {
   id: string;
@@ -61,7 +73,9 @@ export default function CatchDetailPage() {
 
   const [data, setData] = useState<CatchDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const token = typeof window !== "undefined" ? localStorage.getItem(ACCESS_TOKEN_KEY) : null;
@@ -70,13 +84,42 @@ export default function CatchDetailPage() {
       return;
     }
     if (!id) {
-      setError("Invalid catch.");
+      setNotFound(true);
+      setError(null);
+      setData(null);
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
+    setNotFound(false);
+    const demo = isDemoMode();
+
     try {
+      const meRes = await fetch(API_ME, {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (meRes.status === 401) {
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        router.replace("/login");
+        return;
+      }
+      if (!meRes.ok) {
+        setError(`Could not load profile (${meRes.status}).`);
+        setData(null);
+        return;
+      }
+      const meJson = (await meRes.json()) as { user?: { role?: string } };
+      const userRole = meJson.user?.role != null ? String(meJson.user.role) : "unknown";
+      setRole(userRole);
+
+      if (!isTeamRole(userRole) && !isStaffRole(userRole)) {
+        setError("Catch details are not available for your role.");
+        setData(null);
+        return;
+      }
+
       const res = await fetch(API_CATCH(id), {
         cache: "no-store",
         headers: { Authorization: `Bearer ${token}` }
@@ -87,22 +130,34 @@ export default function CatchDetailPage() {
         return;
       }
       if (res.status === 404) {
-        const demo = isDemoMode();
         const sample = demo ? demoCatchDetailById(id) : null;
         if (sample) {
           setError(null);
+          setNotFound(false);
           setData(sample as CatchDetail);
         } else {
-          setError("Catch not found.");
+          setNotFound(true);
+          setError(null);
+          setData(null);
+        }
+        return;
+      }
+      if (res.status === 403) {
+        if (isTeamRole(userRole)) {
+          setNotFound(true);
+          setError(null);
+          setData(null);
+        } else {
+          setError("You do not have access to this catch.");
           setData(null);
         }
         return;
       }
       if (!res.ok) {
-        const demo = isDemoMode();
         const sample = demo ? demoCatchDetailById(id) : null;
         if (sample) {
           setError(null);
+          setNotFound(false);
           setData(sample as CatchDetail);
         } else {
           setError(`Could not load catch (${res.status}).`);
@@ -110,15 +165,16 @@ export default function CatchDetailPage() {
         }
         return;
       }
+      setNotFound(false);
       setData((await res.json()) as CatchDetail);
     } catch {
-      const demo = isDemoMode();
       const sample = demo && id ? demoCatchDetailById(id) : null;
       if (sample) {
         setError(null);
+        setNotFound(false);
         setData(sample as CatchDetail);
       } else {
-        setError("Could not reach the API.");
+        setError(`Could not reach the API at ${getPublicApiBaseUrl()}.`);
         setData(null);
       }
     } finally {
@@ -132,6 +188,7 @@ export default function CatchDetailPage() {
 
   const score = data ? scoreLabel(data) : null;
   const reviews = data?.reviews ?? [];
+  const showNewCatch = role != null && isTeamRole(role);
 
   return (
     <main className="mx-auto max-w-3xl p-6">
@@ -142,12 +199,14 @@ export default function CatchDetailPage() {
         >
           ← Back to history
         </Link>
-        <Link
-          href="/catches/new"
-          className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-white/10"
-        >
-          New catch
-        </Link>
+        {showNewCatch ? (
+          <Link
+            href="/catches/new"
+            className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-white/10"
+          >
+            New catch
+          </Link>
+        ) : null}
       </div>
 
       <div className="mt-6">
@@ -159,6 +218,18 @@ export default function CatchDetailPage() {
             />
             <p className="text-sm text-slate-400">Loading catch…</p>
           </div>
+        ) : notFound ? (
+          <Card title="Catch not found">
+            <p className="text-sm leading-relaxed text-slate-400">
+              This catch does not exist, or you do not have permission to view it.
+            </p>
+            <Link
+              href="/catches"
+              className="mt-4 inline-flex rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-white/10"
+            >
+              Back to catch history
+            </Link>
+          </Card>
         ) : error ? (
           <Card title="Catch">
             <p className="text-sm text-red-100">{error}</p>

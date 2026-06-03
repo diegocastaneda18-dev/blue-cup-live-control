@@ -132,8 +132,11 @@ export class CatchController {
   }
 
   @Get(":catchId")
-  @Roles("captain", "team_member")
+  @Roles("captain", "team_member", "admin", "committee")
   async getOne(@Param("catchId") catchId: string, @CurrentUser() user: JwtUser) {
+    if (user.role === "admin" || user.role === "committee") {
+      return this.catches.getCatchById(catchId);
+    }
     return this.catches.getCatchForTeamMember(user.sub, catchId);
   }
 
