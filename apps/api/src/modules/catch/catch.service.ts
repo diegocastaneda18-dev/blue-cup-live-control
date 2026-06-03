@@ -126,6 +126,18 @@ export class CatchService {
     });
   }
 
+  async listCatchHistoryForTournament(tournamentId: string) {
+    return this.prisma.catch.findMany({
+      where: { tournamentId },
+      include: {
+        ...this.catchDetailInclude(),
+        team: { select: { id: true, name: true } }
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100
+    });
+  }
+
   async getCatchForTeamMember(userId: string, catchId: string) {
     const membership = await this.prisma.teamMember.findFirst({ where: { userId } });
     if (!membership) throw new NotFoundException("No team membership");

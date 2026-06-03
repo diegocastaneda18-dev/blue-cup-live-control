@@ -122,6 +122,15 @@ export class CatchController {
     return this.catches.myCatchHistory(user.sub);
   }
 
+  @Get()
+  @Roles("admin", "committee")
+  async listForTournament(@Query("tournamentId") tournamentId: string) {
+    if (!tournamentId?.trim()) {
+      throw new BadRequestException("tournamentId query parameter is required");
+    }
+    return this.catches.listCatchHistoryForTournament(tournamentId.trim());
+  }
+
   @Get(":catchId")
   @Roles("captain", "team_member")
   async getOne(@Param("catchId") catchId: string, @CurrentUser() user: JwtUser) {
