@@ -14,10 +14,16 @@ export class ExportController {
   @Roles("admin")
   async results(@Param("tournamentId") tournamentId: string, @Res() res: Response) {
     const rows = await this.leaderboard.getLeaderboard(tournamentId);
-    const header = ["rank", "teamName", "pointsPreliminary", "pointsOfficial"].join(",");
+    const header = ["rank", "teamName", "automaticScore", "manualScoreAdjustment", "finalScore"].join(",");
     const body = rows
       .map((r, idx) =>
-        [idx + 1, csv(r.teamName), Number(r.pointsPreliminary).toFixed(1), Number(r.pointsOfficial).toFixed(1)].join(",")
+        [
+          idx + 1,
+          csv(r.teamName),
+          Number(r.automaticScore).toFixed(1),
+          Number(r.manualScoreAdjustment).toFixed(1),
+          Number(r.finalScore).toFixed(1)
+        ].join(",")
       )
       .join("\n");
     const csvText = `${header}\n${body}\n`;

@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt.guard";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { JwtUser } from "@bluecup/types";
 import { CreateTeamDto } from "./dto/create-team.dto";
+import { ManualScoreDto } from "./dto/manual-score.dto";
 import { UpsertBoatDto } from "./dto/upsert-boat.dto";
 import { TeamService } from "./team.service";
 
@@ -41,6 +42,22 @@ export class TeamController {
   @Roles("admin")
   async upsertBoat(@Body() dto: UpsertBoatDto, @CurrentUser() user: JwtUser) {
     return this.teams.upsertBoat({ teamId: dto.teamId, name: dto.name, registry: dto.registry, actorId: user.sub });
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Patch(":teamId/manual-score")
+  @Roles("admin")
+  async setManualScore(
+    @Param("teamId") teamId: string,
+    @Body() dto: ManualScoreDto,
+    @CurrentUser() user: JwtUser
+  ) {
+    return this.teams.setManualScoreAdjustment({
+      teamId,
+      adjustment: dto.adjustment,
+      reason: dto.reason.trim(),
+      actorId: user.sub
+    });
   }
 }
 

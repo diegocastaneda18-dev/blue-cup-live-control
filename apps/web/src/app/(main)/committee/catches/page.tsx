@@ -48,7 +48,7 @@ type PendingCatch = {
   media: { id: string }[];
 };
 
-type ReviewAction = "approve" | "reject" | "request_more_evidence" | "penalize";
+type ReviewAction = "approve" | "reject" | "request_more_evidence" | "penalize" | "set_pending";
 
 export default function CommitteeCatchesPage() {
   const router = useRouter();
@@ -207,7 +207,8 @@ export default function CommitteeCatchesPage() {
     approve: "Approve",
     reject: "Reject",
     request_more_evidence: "Request more evidence",
-    penalize: "Penalize"
+    penalize: "Penalize",
+    set_pending: "Leave pending"
   };
 
   async function submitReview(catchId: string, action: ReviewAction) {
@@ -439,6 +440,7 @@ export default function CommitteeCatchesPage() {
                         [
                           ["approve", "Approve"],
                           ["reject", "Reject"],
+                          ["set_pending", "Leave pending"],
                           ["request_more_evidence", "More evidence"],
                           ["penalize", "Penalize"]
                         ] as const

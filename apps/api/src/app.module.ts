@@ -8,11 +8,13 @@ import { LeaderboardModule } from "./modules/leaderboard/leaderboard.module";
 import { TeamModule } from "./modules/team/team.module";
 import { TournamentModule } from "./modules/tournament/tournament.module";
 import { UserModule } from "./modules/user/user.module";
+import { ExperienceApplicationModule } from "./modules/experience-application/experience-application.module";
+import { ApiHealthController } from "./api-health.controller";
 import { HealthController } from "./health.controller";
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: [".env.local", ".env"] }),
     PrismaModule,
     AuditModule,
     AuthModule,
@@ -20,9 +22,10 @@ import { HealthController } from "./health.controller";
     TournamentModule,
     TeamModule,
     CatchModule,
-    LeaderboardModule
+    LeaderboardModule,
+    ExperienceApplicationModule
   ],
-  controllers: [HealthController]
+  controllers: [HealthController, ApiHealthController]
 })
 export class AppModule {}
 

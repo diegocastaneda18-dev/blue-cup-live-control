@@ -126,12 +126,36 @@ export class CatchService {
     });
   }
 
+  async listCatchHistoryForTournament(tournamentId: string) {
+    return this.prisma.catch.findMany({
+      where: { tournamentId },
+      include: {
+        ...this.catchDetailInclude(),
+        team: { select: { id: true, name: true } }
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100
+    });
+  }
+
   async getCatchForTeamMember(userId: string, catchId: string) {
     const membership = await this.prisma.teamMember.findFirst({ where: { userId } });
     if (!membership) throw new NotFoundException("No team membership");
     const c = await this.prisma.catch.findFirst({
       where: { id: catchId, teamId: membership.teamId },
       include: this.catchDetailInclude()
+    });
+    if (!c) throw new NotFoundException("Catch not found");
+    return c;
+  }
+
+  async getCatchById(catchId: string) {
+    const c = await this.prisma.catch.findUnique({
+      where: { id: catchId },
+      include: {
+        ...this.catchDetailInclude(),
+        team: { select: { id: true, name: true } }
+      }
     });
     if (!c) throw new NotFoundException("Catch not found");
     return c;
@@ -149,7 +173,7 @@ export class CatchService {
   async reviewCatch(params: {
     catchId: string;
     reviewerId: string;
-    action: "approve" | "reject" | "request_more_evidence" | "penalize";
+    action: "approve" | "reject" | "request_more_evidence" | "penalize" | "set_pending";
     notes?: string;
     penaltyPoints?: number;
   }) {
@@ -158,6 +182,35 @@ export class CatchService {
       include: { tournament: true, media: true }
     });
     if (!c) throw new NotFoundException("Catch not found");
+
+    if (params.action === "set_pending") {
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const review = await tx.catchReview.create({
+          data: {
+            catchId: c.id,
+            reviewerId: params.reviewerId,
+            action: "set_pending",
+            notes: params.notes
+          }
+        });
+        const updatedCatch = await tx.catch.update({
+          where: { id: c.id },
+          data: { status: "pending_review" }
+        });
+        return { review, updatedCatch };
+      });
+
+      await this.audit.log({
+        ctx: { actorId: params.reviewerId },
+        action: "catch.review",
+        entity: "Catch",
+        entityId: c.id,
+        meta: { action: params.action, nextStatus: "pending_review" }
+      });
+
+      await this.leaderboard.broadcastLeaderboardRefresh(c.tournamentId);
+      return updated;
+    }
 
     const scoringRule = await this.prisma.scoringRule.findFirst({
       where: { tournamentId: c.tournamentId, categoryId: c.categoryId, isActive: true }

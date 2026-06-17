@@ -33,12 +33,30 @@ type Tournament = {
 type LeaderboardRow = {
   teamId: string;
   teamName: string;
-  pointsPreliminary: number;
-  pointsOfficial: number;
+  automaticScore: number;
+  manualScoreAdjustment: number;
+  manualScoreReason: string | null;
+  finalScore: number;
+  pointsPreliminary?: number;
+  pointsOfficial?: number;
 };
 
 function scoreForRow(row: LeaderboardRow) {
+  if (row.finalScore != null) return row.finalScore;
   return Math.max(row.pointsOfficial ?? 0, row.pointsPreliminary ?? 0);
+}
+
+function automaticForRow(row: LeaderboardRow) {
+  if (row.automaticScore != null) return row.automaticScore;
+  return row.pointsPreliminary ?? 0;
+}
+
+function manualForRow(row: LeaderboardRow) {
+  return row.manualScoreAdjustment ?? 0;
+}
+
+function formatScore(n: number) {
+  return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
 export default function LeaderboardPage() {
@@ -175,6 +193,8 @@ export default function LeaderboardPage() {
   const ranked = rows.map((row, i) => ({
     rank: i + 1,
     teamName: row.teamName,
+    automatic: automaticForRow(row),
+    manual: manualForRow(row),
     score: scoreForRow(row)
   }));
 
@@ -190,7 +210,7 @@ export default function LeaderboardPage() {
               Live · 5s refresh
             </span>
             <span className="rounded-full border border-sky-500/25 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-200">
-              Official line
+              Auto + manual
             </span>
           </>
         }
@@ -269,10 +289,19 @@ export default function LeaderboardPage() {
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium text-slate-50">{r.teamName}</p>
-                        <p className="text-xs text-slate-500">Official line score</p>
+                        <p className="text-xs text-slate-500">
+                          Auto {formatScore(r.automatic)}
+                          {r.manual !== 0 ? (
+                            <span className={r.manual > 0 ? " text-emerald-300" : " text-rose-300"}>
+                              {" "}
+                              · Adj {r.manual > 0 ? "+" : ""}
+                              {formatScore(r.manual)}
+                            </span>
+                          ) : null}
+                        </p>
                       </div>
                       <span className="shrink-0 text-lg font-semibold tabular-nums text-slate-50">
-                        {r.score.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                        {formatScore(r.score)}
                       </span>
                     </li>
                   ))}
@@ -283,7 +312,9 @@ export default function LeaderboardPage() {
                     <tr>
                       <th className="px-4 py-3.5 font-semibold text-slate-400">Rank</th>
                       <th className="px-4 py-3.5 font-semibold text-slate-400">Team</th>
-                      <th className="px-4 py-3.5 text-right font-semibold text-slate-400">Score</th>
+                      <th className="px-4 py-3.5 text-right font-semibold text-slate-400">Automatic</th>
+                      <th className="px-4 py-3.5 text-right font-semibold text-slate-400">Adjustment</th>
+                      <th className="px-4 py-3.5 text-right font-semibold text-slate-400">Final</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/[0.06]">
@@ -294,8 +325,19 @@ export default function LeaderboardPage() {
                       >
                         <td className="px-4 py-3.5 font-medium tabular-nums text-amber-100/90">{r.rank}</td>
                         <td className="px-4 py-3.5 font-medium">{r.teamName}</td>
+                        <td className="px-4 py-3.5 text-right tabular-nums text-slate-300">
+                          {formatScore(r.automatic)}
+                        </td>
+                        <td
+                          className={`px-4 py-3.5 text-right tabular-nums ${
+                            r.manual > 0 ? "text-emerald-300" : r.manual < 0 ? "text-rose-300" : "text-slate-500"
+                          }`}
+                        >
+                          {r.manual > 0 ? "+" : ""}
+                          {formatScore(r.manual)}
+                        </td>
                         <td className="px-4 py-3.5 text-right tabular-nums font-semibold text-slate-50">
-                          {r.score.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                          {formatScore(r.score)}
                         </td>
                       </tr>
                     ))}

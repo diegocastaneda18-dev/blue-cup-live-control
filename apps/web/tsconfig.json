@@ -2,6 +2,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
+      "@/*": ["./src/*"],
       "@bluecup/types": ["../../packages/types/src/index.ts"],
       "@bluecup/ui/*": ["../../packages/ui/src/*"]
     },

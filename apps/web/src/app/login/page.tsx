@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@bluecup/ui";
+import { ExperienceBrand } from "../../components/ExperienceBrand";
 import {
   btnPrimaryClass,
   btnResponsiveClass,
@@ -65,60 +66,72 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-[100dvh] max-w-md flex-col justify-center px-4 py-8 pb-[env(safe-area-inset-bottom)] sm:px-6">
-      <div className="mb-8 text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-400/90">Las Marías Blue Cup</p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">Sign in</h1>
-        <p className="mt-2 text-sm leading-relaxed text-slate-400">
-          Log catches, check standings, and stay on the water — no laptop required.
-        </p>
-      </div>
+    <div className="maria-hero-gradient min-h-[100dvh]">
+      <main className="mx-auto flex min-h-[100dvh] max-w-md flex-col justify-center px-4 py-8 pb-[env(safe-area-inset-bottom)] sm:px-6">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <ExperienceBrand variant="hero" showTagline />
+          <h1 className="mt-8 font-display text-3xl font-semibold tracking-tight text-maria-pearl">
+            Acceso privado
+          </h1>
+          <p className="mt-3 max-w-sm text-sm leading-relaxed text-maria-sand/80">
+            Yates, pesca deportiva, surf, buceo y experiencias a medida — desde cualquier dispositivo.
+          </p>
+        </div>
 
-      <Card title="Your account">
-        <form className={formStackClass} onSubmit={onSubmit}>
-          {error ? <InlineNotice variant="error">{error}</InlineNotice> : null}
+        <Card title="Tu cuenta">
+          <form className={formStackClass} onSubmit={onSubmit}>
+            {error ? <InlineNotice variant="error">{error}</InlineNotice> : null}
 
-          <label className="grid gap-2 text-sm">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Email</span>
-            <input
-              type="email"
-              name="email"
-              autoComplete="email"
-              autoCapitalize="none"
-              autoCorrect="off"
-              inputMode="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={fieldInputClass}
-              placeholder="you@example.com"
-            />
-          </label>
+            <label className="grid gap-2 text-sm">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-maria-forest/60">
+                Email
+              </span>
+              <input
+                type="email"
+                name="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                inputMode="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={fieldInputClass}
+                placeholder="you@example.com"
+              />
+            </label>
 
-          <label className="grid gap-2 text-sm">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Password</span>
-            <input
-              type="password"
-              name="password"
-              autoComplete="current-password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={fieldInputClass}
-              placeholder="••••••••"
-            />
-          </label>
+            <label className="grid gap-2 text-sm">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-maria-forest/60">
+                Password
+              </span>
+              <input
+                type="password"
+                name="password"
+                autoComplete="current-password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={fieldInputClass}
+                placeholder="••••••••"
+              />
+            </label>
 
-          <button
-            type="submit"
-            disabled={pending}
-            className={`${btnPrimaryClass} ${btnResponsiveClass}`}
-          >
-            {pending ? "Signing in…" : "Sign in"}
-          </button>
-        </form>
-      </Card>
-    </main>
+            <button
+              type="submit"
+              disabled={pending}
+              className={`${btnPrimaryClass} ${btnResponsiveClass}`}
+            >
+              {pending ? "Signing in…" : "Sign in"}
+            </button>
+          </form>
+        </Card>
+
+        <footer className="mt-10 flex justify-center pb-4">
+          <ExperienceBrand variant="footer" />
+        </footer>
+      </main>
+    </div>
   );
 }

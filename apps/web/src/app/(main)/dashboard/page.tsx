@@ -231,7 +231,7 @@ export default function DashboardPage() {
     return (
       <PageMain className="max-w-3xl">
         <PageHeader
-          kicker="Blue Cup"
+          kicker="Las Marías Blue Cup"
           title="Dashboard"
           description="Your session could not be restored from the API."
         />

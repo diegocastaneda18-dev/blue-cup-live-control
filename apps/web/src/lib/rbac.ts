@@ -5,7 +5,8 @@ const NAV_ALL: { href: string; label: string }[] = [
   { href: "/teams", label: "Teams" },
   { href: "/catches/new", label: "New Catch" },
   { href: "/catches", label: "Catch History" },
-  { href: "/committee/catches", label: "Committee" }
+  { href: "/committee/catches", label: "Committee" },
+  { href: "/users", label: "Users" }
 ];
 
 export function normalizeRole(role: string): string {
@@ -49,6 +50,8 @@ function isDashboardPath(p: string): boolean {
 export function isPathAllowedForRole(role: string, pathname: string): boolean {
   const r = normalizeRole(role);
   const p = pathname.split("?")[0] ?? pathname;
+
+  if (p.startsWith("/users") && r !== "admin") return false;
 
   if (r === "admin") return true;
 

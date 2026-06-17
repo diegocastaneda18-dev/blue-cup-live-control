@@ -22,3 +22,67 @@ packages/types/src/*.js
 packages/types/src/*.js.map
 packages/types/src/*.d.ts
 apps/api/uploads/
+apps/api/data/
+# Local backups and generated runtime data
+backups/
+apps/api/data/experience-applications/
+apps/web/tsconfig.tsbuildinfo
+apps/web/Ctrl
+**/desktop.ini
+
+# Local env files
+.env.local
+apps/api/.env.local
+apps/web/.env.local
+
+# Local backups and generated runtime data
+backups/
+apps/api/data/experience-applications/
+apps/web/tsconfig.tsbuildinfo
+apps/web/Ctrl
+**/desktop.ini
+
+# Local env files
+.env.local
+apps/api/.env.local
+apps/web/.env.local
+
+# TypeScript build cache
+*.tsbuildinfo
+apps/web/tsconfig.tsbuildinfo
+
+# Heavy local media
+apps/web/public/las-marias/reel-islas-marias.mp4
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Local backups and generated runtime data
+backups/
+apps/api/data/experience-applications/
+apps/web/Ctrl
+**/desktop.ini
+
+# Local env files
+.env.local
+apps/api/.env.local
+apps/web/.env.local
+
+# Heavy local media
+apps/web/public/las-marias/reel-islas-marias.mp4
+*.mp4
+*.mov
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Local backups and generated runtime data
+backups/
+apps/api/data/experience-applications/
+apps/web/Ctrl
+**/desktop.ini
+
+# Local env files
+.env.local
+apps/api/.env.local
+apps/web/.env.local

@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import { AppBrand } from "../../components/AppBrand";
 import { MobileBottomNav } from "../../components/MobileBottomNav";
+import { SiteFooter } from "../../components/SiteFooter";
 import { publicApiUrl } from "../../lib/env";
 import { isPathAllowedForRole, navLinksForRole } from "../../lib/rbac";
 
 const ACCESS_TOKEN_KEY = "accessToken";
 const API_ME = publicApiUrl("/auth/me");
-/** Static asset in `apps/web/public/` — use `.svg` instead if that is the file you ship. */
-const LAS_MARIAS_LOGO_SRC = "/las-marias-blue-cup-logo.png";
 
 type MeUser = { email: string; role: string };
 
@@ -89,10 +89,10 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-6">
         <div
-          className="h-9 w-9 animate-spin rounded-full border-2 border-amber-400/30 border-t-amber-400"
+          className="h-9 w-9 animate-spin rounded-full border-2 border-maria-ocean/25 border-t-maria-ocean"
           aria-hidden
         />
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-maria-sand/70">
           {phase === "redirecting" ? "Redirecting to sign-in…" : "Loading your session…"}
         </p>
       </div>
@@ -100,49 +100,34 @@ export default function MainLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 pb-mobile-nav lg:pb-0">
-      <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-slate-950/95 shadow-[0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-md supports-[padding:max(0px)]:pt-[env(safe-area-inset-top)]">
+    <div className="min-h-screen bg-maria-forest-dark pb-mobile-nav lg:pb-0">
+      <header className="maria-glass-nav sticky top-0 z-50 supports-[padding:max(0px)]:pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
           <div className="flex min-w-0 flex-1 items-center justify-between gap-3 lg:flex-col lg:items-stretch lg:justify-start lg:gap-2.5">
-            <Link
-              href="/dashboard"
-              className="flex min-w-0 w-fit shrink-0 items-center gap-2.5 rounded-lg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-amber-400/40"
-            >
-              <img
-                src={LAS_MARIAS_LOGO_SRC}
-                alt="Las Marías Blue Cup"
-                className="h-8 w-auto max-w-[7.5rem] object-contain object-left sm:h-9 sm:max-w-[8.5rem]"
-                width={136}
-                height={36}
-                decoding="async"
-              />
-              <span className="hidden text-sm font-semibold tracking-tight text-slate-100 sm:inline">
-                Las Marías Blue Cup
-              </span>
-            </Link>
+            <AppBrand href="/dashboard" />
             {user ? (
-              <span className="truncate rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[10px] font-medium capitalize text-amber-100/90 lg:hidden">
+              <span className="truncate rounded-full border border-maria-ocean/25 bg-maria-forest/50 px-2.5 py-1 text-[10px] font-medium capitalize text-maria-ocean-light lg:hidden">
                 {user.role}
               </span>
             ) : null}
             <button
               type="button"
               onClick={logout}
-              className="min-h-11 shrink-0 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-white/10 lg:hidden"
+              className="min-h-11 shrink-0 rounded-lg border border-maria-pearl/15 bg-maria-pearl/5 px-3 py-2 text-sm font-medium text-maria-sand hover:bg-maria-pearl/10 lg:hidden"
             >
               Log out
             </button>
           </div>
 
           {user ? (
-            <div className="hidden rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs sm:block sm:flex-row sm:items-baseline sm:gap-3 lg:flex">
-              <span className="text-slate-400">
+            <div className="hidden rounded-lg border border-maria-pearl/10 bg-maria-forest/40 px-3 py-2 text-xs sm:block sm:flex-row sm:items-baseline sm:gap-3 lg:flex">
+              <span className="text-maria-sand/70">
                 Signed in as{" "}
-                <span className="font-medium text-slate-100">{user.email}</span>
+                <span className="font-medium text-maria-pearl">{user.email}</span>
               </span>
-              <span className="text-slate-500">
+              <span className="text-maria-sand/50">
                 Role:{" "}
-                <span className="font-medium capitalize text-amber-100/90">{user.role}</span>
+                <span className="font-medium capitalize text-maria-ocean-light">{user.role}</span>
               </span>
             </div>
           ) : null}
@@ -157,8 +142,8 @@ export default function MainLayout({ children }: { children: ReactNode }) {
                   href={href}
                   className={`min-h-10 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                     active
-                      ? "bg-amber-500/15 text-amber-100 ring-1 ring-amber-400/25"
-                      : "text-slate-300 hover:bg-white/5 hover:text-slate-50"
+                      ? "bg-maria-ocean/15 text-maria-ocean-light ring-1 ring-maria-ocean/30"
+                      : "text-maria-sand/80 hover:bg-maria-pearl/5 hover:text-maria-pearl"
                   }`}
                 >
                   {label}
@@ -171,7 +156,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
             <button
               type="button"
               onClick={logout}
-              className="min-h-10 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-white/10"
+              className="min-h-10 rounded-lg border border-maria-pearl/15 bg-maria-pearl/5 px-3 py-2 text-sm font-medium text-maria-sand hover:bg-maria-pearl/10"
             >
               Log out
             </button>
@@ -182,14 +167,16 @@ export default function MainLayout({ children }: { children: ReactNode }) {
       {forbidden ? (
         <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 px-6">
           <div
-            className="h-8 w-8 animate-spin rounded-full border-2 border-amber-400/30 border-t-amber-400"
+            className="h-8 w-8 animate-spin rounded-full border-2 border-maria-ocean/25 border-t-maria-ocean"
             aria-hidden
           />
-          <p className="text-sm text-slate-400">Opening your dashboard…</p>
+          <p className="text-sm text-maria-sand/70">Opening your dashboard…</p>
         </div>
       ) : (
         children
       )}
+
+      <SiteFooter />
 
       <MobileBottomNav links={navLinks} pathname={pathname} />
     </div>
