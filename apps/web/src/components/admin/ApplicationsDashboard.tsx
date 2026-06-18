@@ -13,7 +13,8 @@ import {
   filterApplications,
   formatDate,
   formatEntryType,
-  isAdminUnauthorizedError
+  isAdminUnauthorizedError,
+  isAdminForbiddenError
 } from "../../lib/experience-application-admin";
 import { useAdminAuth } from "./AdminAuthContext";
 import { AdminShell } from "./AdminShell";
@@ -42,7 +43,11 @@ export function ApplicationsDashboard() {
       setRows(applications);
     } catch (e) {
       if (isAdminUnauthorizedError(e)) {
-        logout();
+        setError(e.message);
+        return;
+      }
+      if (isAdminForbiddenError(e)) {
+        setError(e.message);
         return;
       }
       setError(e instanceof Error ? e.message : "Error al cargar solicitudes.");

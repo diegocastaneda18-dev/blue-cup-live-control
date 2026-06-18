@@ -249,6 +249,9 @@ importers:
       '@ducanh2912/next-pwa':
         specifier: ^10.2.9
         version: 10.2.9(next@15.5.15(@babel/core@7.29.7)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(webpack@5.97.1)
+      '@supabase/supabase-js':
+        specifier: ^2.108.2
+        version: 2.108.2
       next:
         specifier: ^15.3.3
         version: 15.5.15(@babel/core@7.29.7)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)

@@ -124,12 +124,11 @@ export function ApplicationDetailView({ folio }: { folio: string }) {
   async function handleGenerateLicense() {
     if (!record?.folio) return;
 
-    const password = sessionStorage.getItem("lme_admin_password") || "";
     setIsGeneratingLicense(true);
     setLicenseError(null);
 
     try {
-      await generateExperienceApplicationLicense(record.folio, password);
+      await generateExperienceApplicationLicense(record.folio);
       await load();
     } catch (error) {
       setLicenseError(

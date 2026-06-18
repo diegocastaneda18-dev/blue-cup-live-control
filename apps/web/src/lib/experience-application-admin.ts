@@ -7,7 +7,12 @@ import type {
   UpdateExperienceApplicationStatusResponse,
   UpdateExperienceDocumentStatusResponse
 } from "@bluecup/types";
-import { ADMIN_UNAUTHORIZED_MESSAGE, getAdminPassword } from "./admin-auth";
+import {
+  ADMIN_FORBIDDEN_MESSAGE,
+  ADMIN_UNAUTHORIZED_MESSAGE,
+  getAdminAuthHeaders,
+  isAdminAuthenticated
+} from "./admin-auth";
 import { getPublicApiBaseUrl } from "./env";
 
 const ADMIN_PROXY_BASE = "/api/admin/experience-applications";
@@ -80,10 +85,23 @@ const ADMIN_NETWORK_ERROR =
 export class AdminUnauthorizedError extends Error {
   readonly status = 401;
 
-  constructor() {
-    super(ADMIN_UNAUTHORIZED_MESSAGE);
+  constructor(message: string = ADMIN_UNAUTHORIZED_MESSAGE) {
+    super(message);
     this.name = "AdminUnauthorizedError";
   }
+}
+
+export class AdminForbiddenError extends Error {
+  readonly status = 403;
+
+  constructor(message: string = ADMIN_FORBIDDEN_MESSAGE) {
+    super(message);
+    this.name = "AdminForbiddenError";
+  }
+}
+
+export function isAdminForbiddenError(error: unknown): error is AdminForbiddenError {
+  return error instanceof AdminForbiddenError;
 }
 
 export function isAdminUnauthorizedError(error: unknown): error is AdminUnauthorizedError {
@@ -154,21 +172,20 @@ function parseAdminError(result: unknown, status: number): string {
 }
 
 async function adminProxyFetch<T>(proxyPath: string, init?: RequestInit): Promise<T> {
-  const password = getAdminPassword();
-  if (!password) {
+  if (!isAdminAuthenticated()) {
     throw new AdminUnauthorizedError();
   }
 
   const apiUrl = proxyPath.startsWith("/") ? proxyPath : `/${proxyPath}`;
-  console.log("Admin API URL:", apiUrl);
+  const authHeaders = getAdminAuthHeaders();
 
   let res: Response;
   try {
     res = await fetch(apiUrl, {
       ...init,
       headers: {
-        "Content-Type": "application/json",
-        "x-admin-password": password,
+        ...authHeaders,
+        ...(init?.body ? { "Content-Type": "application/json" } : {}),
         ...(init?.headers ?? {})
       }
     });
@@ -178,10 +195,13 @@ async function adminProxyFetch<T>(proxyPath: string, init?: RequestInit): Promis
   }
 
   const result = await res.json().catch(() => null);
-  console.log("Admin API response", result);
 
   if (res.status === 401) {
-    throw new AdminUnauthorizedError();
+    throw new AdminUnauthorizedError(ADMIN_UNAUTHORIZED_MESSAGE);
+  }
+
+  if (res.status === 403) {
+    throw new AdminForbiddenError(ADMIN_FORBIDDEN_MESSAGE);
   }
 
   if (!res.ok) {
@@ -252,16 +272,17 @@ export async function downloadExperienceDocument(
   folio: string,
   document: ExperienceApplicationDocument
 ): Promise<void> {
-  const password = getAdminPassword();
-  if (!password) {
+  if (!isAdminAuthenticated()) {
     throw new AdminUnauthorizedError();
   }
 
   const url = `${ADMIN_PROXY_BASE}/${encodeURIComponent(folio)}/documents/${encodeURIComponent(document.id)}/download`;
+  const authHeaders = getAdminAuthHeaders();
+
   let res: Response;
   try {
     res = await fetch(url, {
-      headers: { "x-admin-password": password }
+      headers: authHeaders
     });
   } catch (err) {
     console.error("Document download network error", err);
@@ -269,7 +290,11 @@ export async function downloadExperienceDocument(
   }
 
   if (res.status === 401) {
-    throw new AdminUnauthorizedError();
+    throw new AdminUnauthorizedError(ADMIN_UNAUTHORIZED_MESSAGE);
+  }
+
+  if (res.status === 403) {
+    throw new AdminForbiddenError(ADMIN_FORBIDDEN_MESSAGE);
   }
 
   if (!res.ok) {
@@ -283,20 +308,32 @@ export async function downloadExperienceDocument(
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
 }
 
-export async function generateExperienceApplicationLicense(folio: string, password: string) {
+export async function generateExperienceApplicationLicense(folio: string) {
+  if (!isAdminAuthenticated()) {
+    throw new AdminUnauthorizedError();
+  }
+
+  const authHeaders = getAdminAuthHeaders();
+
   const response = await fetch(
     `${ADMIN_PROXY_BASE}/${encodeURIComponent(folio)}/license`,
     {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "x-admin-password": password
+        ...authHeaders,
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({})
     }
   );
 
   const result = await response.json().catch(() => null);
+  if (response.status === 401) {
+    throw new AdminUnauthorizedError(ADMIN_UNAUTHORIZED_MESSAGE);
+  }
+  if (response.status === 403) {
+    throw new AdminForbiddenError(ADMIN_FORBIDDEN_MESSAGE);
+  }
   if (!response.ok) {
     throw new Error(
       (result as { message?: string } | null)?.message || "No se pudo generar la licencia PDF."
@@ -307,22 +344,27 @@ export async function generateExperienceApplicationLicense(folio: string, passwo
 }
 
 export async function openExperienceApplicationLicense(folio: string): Promise<void> {
-  const password = getAdminPassword();
-  if (!password) {
+  if (!isAdminAuthenticated()) {
     throw new AdminUnauthorizedError();
   }
 
   const url = `${ADMIN_PROXY_BASE}/${encodeURIComponent(folio)}/license/download`;
+  const authHeaders = getAdminAuthHeaders();
+
   let res: Response;
   try {
-    res = await fetch(url, { headers: { "x-admin-password": password } });
+    res = await fetch(url, { headers: authHeaders });
   } catch (err) {
     console.error("License download network error", err);
     throw new Error(ADMIN_NETWORK_ERROR);
   }
 
   if (res.status === 401) {
-    throw new AdminUnauthorizedError();
+    throw new AdminUnauthorizedError(ADMIN_UNAUTHORIZED_MESSAGE);
+  }
+
+  if (res.status === 403) {
+    throw new AdminForbiddenError(ADMIN_FORBIDDEN_MESSAGE);
   }
 
   if (!res.ok) {

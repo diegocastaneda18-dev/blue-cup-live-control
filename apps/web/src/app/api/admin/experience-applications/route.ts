@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { buildNestAdminProxyHeaders } from "@/lib/admin-proxy-auth";
 import { getNestApiBaseUrl } from "@/lib/nest-api-base";
 
 export async function GET(request: NextRequest) {
-  const adminPassword = request.headers.get("x-admin-password");
   const apiBaseUrl = getNestApiBaseUrl();
-
   try {
     const response = await fetch(`${apiBaseUrl}/api/experience-applications`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "x-admin-password": adminPassword || ""
-      },
+      headers: buildNestAdminProxyHeaders(request, { json: true }),
       cache: "no-store"
     });
 
