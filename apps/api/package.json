@@ -4,11 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "nest start -b swc -p tsconfig.json --watch",
-    "build": "nest build -p tsconfig.build.json",
+    "build": "prisma generate --schema prisma/schema.prisma && nest build -p tsconfig.build.json",
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "echo \"(api) lint skipped\"",
-    "prisma:generate": "prisma generate",
+    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "prisma:migrate": "prisma migrate dev",
     "backfill:release-scoring": "ts-node -r tsconfig-paths/register prisma/backfill-release-scoring.ts",
     "one-time:upsert-las-marias-2026-species": "ts-node -r tsconfig-paths/register prisma/upsert-las-marias-2026-species.ts",
