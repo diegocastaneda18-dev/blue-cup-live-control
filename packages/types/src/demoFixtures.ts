@@ -35,9 +35,36 @@ export function demoDashboardTournaments() {
 export function demoLeaderboardForTournament(tournamentId: string) {
   if (tournamentId !== DEMO_TOURNAMENT_ID) return [];
   return [
-    { teamId: DEMO_TEAM_BRAVO, teamName: "Marlin Royale (demo)", pointsPreliminary: 40, pointsOfficial: 265 },
-    { teamId: DEMO_TEAM_ALPHA, teamName: "Azul Dorado (demo)", pointsPreliminary: 220, pointsOfficial: 0 },
-    { teamId: DEMO_TEAM_CHARLIE, teamName: "Atún Brisa (demo)", pointsPreliminary: 0, pointsOfficial: 95 }
+    {
+      teamId: DEMO_TEAM_BRAVO,
+      teamName: "Marlin Royale (demo)",
+      automaticScore: 265,
+      manualScoreAdjustment: 0,
+      manualScoreReason: null,
+      finalScore: 265,
+      pointsPreliminary: 265,
+      pointsOfficial: 265
+    },
+    {
+      teamId: DEMO_TEAM_ALPHA,
+      teamName: "Azul Dorado (demo)",
+      automaticScore: 220,
+      manualScoreAdjustment: -10,
+      manualScoreReason: "Demo penalty adjustment",
+      finalScore: 210,
+      pointsPreliminary: 220,
+      pointsOfficial: 210
+    },
+    {
+      teamId: DEMO_TEAM_CHARLIE,
+      teamName: "Atún Brisa (demo)",
+      automaticScore: 95,
+      manualScoreAdjustment: 5,
+      manualScoreReason: "Demo bonus adjustment",
+      finalScore: 100,
+      pointsPreliminary: 95,
+      pointsOfficial: 100
+    }
   ];
 }
 

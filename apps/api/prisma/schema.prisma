@@ -42,6 +42,7 @@ enum ReviewAction {
   reject
   request_more_evidence
   penalize
+  set_pending
 }
 
 enum NotificationType {
@@ -61,13 +62,14 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  teamMemberships TeamMember[]
-  catches         Catch[]
-  reviews         CatchReview[]  @relation("reviewer")
-  notifications   Notification[]
-  auditLogs       AuditLog[]
-  protests        Protest[]
-  penalties       Penalty[]
+  teamMemberships          TeamMember[]
+  catches                Catch[]
+  reviews                CatchReview[]  @relation("reviewer")
+  notifications          Notification[]
+  auditLogs              AuditLog[]
+  protests               Protest[]
+  penalties              Penalty[]
+  manualScoreTeamUpdates Team[]         @relation("TeamManualScoreUpdates")
 }
 
 model Tournament {
@@ -91,19 +93,24 @@ model Tournament {
 }
 
 model Team {
-  id            String   @id @default(uuid())
-  tournamentId  String
-  name          String
-  captainUserId String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                     String    @id @default(uuid())
+  tournamentId           String
+  name                   String
+  captainUserId          String?
+  manualScoreAdjustment  Float     @default(0)
+  manualScoreReason      String?
+  manualScoreUpdatedById String?
+  manualScoreUpdatedAt   DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
-  tournament Tournament   @relation(fields: [tournamentId], references: [id])
-  boat       Boat?
-  members    TeamMember[]
-  catches    Catch[]
-  protests   Protest[]
-  penalties  Penalty[]
+  tournament           Tournament @relation(fields: [tournamentId], references: [id])
+  boat                 Boat?
+  members              TeamMember[]
+  catches              Catch[]
+  protests             Protest[]
+  penalties            Penalty[]
+  manualScoreUpdatedBy User?      @relation("TeamManualScoreUpdates", fields: [manualScoreUpdatedById], references: [id])
 
   @@unique([tournamentId, name])
 }

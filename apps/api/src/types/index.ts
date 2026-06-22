@@ -13,4 +13,15 @@ export type CatchType = "release" | "weigh_in";
 
 export type MediaType = "photo" | "video";
 
-export type ReviewAction = "approve" | "reject" | "request_more_evidence" | "penalize";
+export type ReviewAction = "approve" | "reject" | "request_more_evidence" | "penalize" | "set_pending";
+
+export type {
+  CreateExperienceApplicationPayload,
+  CreateExperienceApplicationResponse,
+  ExperienceApplicationDocument,
+  ExperienceApplicationRecord,
+  ExperienceApplicationStatus,
+  ExperienceDocumentStatus,
+  UpdateExperienceApplicationStatusPayload,
+  UpdateExperienceApplicationStatusResponse
+} from "./experienceApplication";

@@ -2,14 +2,38 @@
 
 import { Card } from "@bluecup/ui";
 import { CatchStatusBadge } from "../../../../components/CatchStatusBadge";
+import {
+  btnGhostClass,
+  btnResponsiveClass,
+  fieldInputClass,
+  FormField,
+  InlineNotice
+} from "../../../../components/PageChrome";
+import { useToast } from "../../../../components/Toast";
 import { demoCatchDetailById, isDemoMode } from "@bluecup/types";
-import { publicApiUrl } from "../../../../lib/env";
+import { getPublicApiBaseUrl, publicApiUrl } from "../../../../lib/env";
+import { dispatchLeaderboardRefresh } from "../../../../lib/liveEvents";
+import { normalizeRole } from "../../../../lib/rbac";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 const ACCESS_TOKEN_KEY = "accessToken";
+const API_ME = publicApiUrl("/auth/me");
 const API_CATCH = (id: string) => publicApiUrl(`/catches/${encodeURIComponent(id)}`);
+const API_REVIEW = (id: string) => publicApiUrl(`/committee/catches/${encodeURIComponent(id)}/review`);
+
+type ReviewAction = "approve" | "reject" | "set_pending" | "request_more_evidence" | "penalize";
+
+function isTeamRole(role: string): boolean {
+  const r = normalizeRole(role);
+  return r === "captain" || r === "team_member";
+}
+
+function isStaffRole(role: string): boolean {
+  const r = normalizeRole(role);
+  return r === "admin" || r === "committee";
+}
 
 type ReviewRow = {
   id: string;
@@ -57,11 +81,17 @@ function formatWhen(iso: string) {
 export default function CatchDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const toast = useToast();
   const id = typeof params.id === "string" ? params.id : "";
 
   const [data, setData] = useState<CatchDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<string | null>(null);
+  const [reviewNotes, setReviewNotes] = useState("");
+  const [reviewPending, setReviewPending] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const token = typeof window !== "undefined" ? localStorage.getItem(ACCESS_TOKEN_KEY) : null;
@@ -70,13 +100,42 @@ export default function CatchDetailPage() {
       return;
     }
     if (!id) {
-      setError("Invalid catch.");
+      setNotFound(true);
+      setError(null);
+      setData(null);
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
+    setNotFound(false);
+    const demo = isDemoMode();
+
     try {
+      const meRes = await fetch(API_ME, {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (meRes.status === 401) {
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        router.replace("/login");
+        return;
+      }
+      if (!meRes.ok) {
+        setError(`Could not load profile (${meRes.status}).`);
+        setData(null);
+        return;
+      }
+      const meJson = (await meRes.json()) as { user?: { role?: string } };
+      const userRole = meJson.user?.role != null ? String(meJson.user.role) : "unknown";
+      setRole(userRole);
+
+      if (!isTeamRole(userRole) && !isStaffRole(userRole)) {
+        setError("Catch details are not available for your role.");
+        setData(null);
+        return;
+      }
+
       const res = await fetch(API_CATCH(id), {
         cache: "no-store",
         headers: { Authorization: `Bearer ${token}` }
@@ -87,22 +146,34 @@ export default function CatchDetailPage() {
         return;
       }
       if (res.status === 404) {
-        const demo = isDemoMode();
         const sample = demo ? demoCatchDetailById(id) : null;
         if (sample) {
           setError(null);
+          setNotFound(false);
           setData(sample as CatchDetail);
         } else {
-          setError("Catch not found.");
+          setNotFound(true);
+          setError(null);
+          setData(null);
+        }
+        return;
+      }
+      if (res.status === 403) {
+        if (isTeamRole(userRole)) {
+          setNotFound(true);
+          setError(null);
+          setData(null);
+        } else {
+          setError("You do not have access to this catch.");
           setData(null);
         }
         return;
       }
       if (!res.ok) {
-        const demo = isDemoMode();
         const sample = demo ? demoCatchDetailById(id) : null;
         if (sample) {
           setError(null);
+          setNotFound(false);
           setData(sample as CatchDetail);
         } else {
           setError(`Could not load catch (${res.status}).`);
@@ -110,15 +181,16 @@ export default function CatchDetailPage() {
         }
         return;
       }
+      setNotFound(false);
       setData((await res.json()) as CatchDetail);
     } catch {
-      const demo = isDemoMode();
       const sample = demo && id ? demoCatchDetailById(id) : null;
       if (sample) {
         setError(null);
+        setNotFound(false);
         setData(sample as CatchDetail);
       } else {
-        setError("Could not reach the API.");
+        setError(`Could not reach the API at ${getPublicApiBaseUrl()}.`);
         setData(null);
       }
     } finally {
@@ -132,6 +204,55 @@ export default function CatchDetailPage() {
 
   const score = data ? scoreLabel(data) : null;
   const reviews = data?.reviews ?? [];
+  const showNewCatch = role != null && isTeamRole(role);
+  const showReview = role != null && isStaffRole(role);
+
+  async function submitReview(action: ReviewAction) {
+    const token = typeof window !== "undefined" ? localStorage.getItem(ACCESS_TOKEN_KEY) : null;
+    if (!token || !id) {
+      router.replace("/login");
+      return;
+    }
+    setReviewError(null);
+    setReviewPending(true);
+    const body: { action: ReviewAction; notes?: string } = { action };
+    const n = reviewNotes.trim();
+    if (n) body.notes = n;
+    try {
+      const res = await fetch(API_REVIEW(id), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+      });
+      const raw = (await res.json().catch(() => null)) as { message?: string | string[]; updatedCatch?: CatchDetail } | null;
+      if (res.status === 401) {
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        router.replace("/login");
+        return;
+      }
+      if (!res.ok) {
+        const msg = raw?.message;
+        const text = Array.isArray(msg) ? msg.join(" ") : msg;
+        setReviewError(text || `Review failed (${res.status}).`);
+        toast.error(text || "Review failed.");
+        return;
+      }
+      toast.success("Catch review saved.");
+      setReviewNotes("");
+      dispatchLeaderboardRefresh();
+      if (raw?.updatedCatch) {
+        setData((prev) => (prev ? { ...prev, ...raw.updatedCatch, status: raw.updatedCatch!.status } : prev));
+      }
+      await load();
+    } catch {
+      setReviewError(`Could not reach the API at ${getPublicApiBaseUrl()}.`);
+    } finally {
+      setReviewPending(false);
+    }
+  }
 
   return (
     <main className="mx-auto max-w-3xl p-6">
@@ -142,12 +263,14 @@ export default function CatchDetailPage() {
         >
           ← Back to history
         </Link>
-        <Link
-          href="/catches/new"
-          className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-white/10"
-        >
-          New catch
-        </Link>
+        {showNewCatch ? (
+          <Link
+            href="/catches/new"
+            className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-white/10"
+          >
+            New catch
+          </Link>
+        ) : null}
       </div>
 
       <div className="mt-6">
@@ -159,6 +282,18 @@ export default function CatchDetailPage() {
             />
             <p className="text-sm text-slate-400">Loading catch…</p>
           </div>
+        ) : notFound ? (
+          <Card title="Catch not found">
+            <p className="text-sm leading-relaxed text-slate-400">
+              This catch does not exist, or you do not have permission to view it.
+            </p>
+            <Link
+              href="/catches"
+              className="mt-4 inline-flex rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-white/10"
+            >
+              Back to catch history
+            </Link>
+          </Card>
         ) : error ? (
           <Card title="Catch">
             <p className="text-sm text-red-100">{error}</p>
@@ -273,6 +408,54 @@ export default function CatchDetailPage() {
                 </ul>
               )}
             </Card>
+
+            {showReview ? (
+              <Card title="Validate catch">
+                <p className="mb-4 text-sm leading-relaxed text-slate-400">
+                  Approve to count this catch on the leaderboard (release catches receive official points from species).
+                  Reject or leave pending to exclude it from standings.
+                </p>
+                {reviewError ? (
+                  <div className="mb-4">
+                    <InlineNotice variant="error">{reviewError}</InlineNotice>
+                  </div>
+                ) : null}
+                <FormField label="Review notes" optional hint="Saved to the audit trail.">
+                  <textarea
+                    rows={3}
+                    value={reviewNotes}
+                    onChange={(e) => setReviewNotes(e.target.value)}
+                    className={`${fieldInputClass} resize-y`}
+                    placeholder="Notes for the audit trail…"
+                  />
+                </FormField>
+                <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                  {(
+                    [
+                      ["approve", "Approve"],
+                      ["reject", "Reject"],
+                      ["set_pending", "Leave pending"]
+                    ] as const
+                  ).map(([action, label]) => (
+                    <button
+                      key={action}
+                      type="button"
+                      disabled={reviewPending}
+                      onClick={() => void submitReview(action)}
+                      className={
+                        action === "approve"
+                          ? `min-h-11 rounded-xl bg-emerald-600/90 px-3 py-2.5 text-xs font-semibold text-white shadow-md shadow-emerald-950/30 hover:bg-emerald-500 disabled:opacity-50 sm:px-4 sm:text-sm ${btnResponsiveClass}`
+                          : action === "reject"
+                            ? `min-h-11 rounded-xl border border-red-400/40 bg-red-500/15 px-3 py-2.5 text-xs font-semibold text-red-100 hover:bg-red-500/25 disabled:opacity-50 sm:px-4 sm:text-sm ${btnResponsiveClass}`
+                            : `min-h-11 rounded-xl border border-white/[0.12] bg-white/[0.04] px-3 py-2.5 text-xs font-semibold text-slate-100 hover:border-sky-500/25 hover:bg-sky-500/10 disabled:opacity-50 sm:px-4 sm:text-sm ${btnResponsiveClass}`
+                      }
+                    >
+                      {reviewPending ? "Working…" : label}
+                    </button>
+                  ))}
+                </div>
+              </Card>
+            ) : null}
           </div>
         )}
       </div>

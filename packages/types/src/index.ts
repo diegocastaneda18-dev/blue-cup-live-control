@@ -9,9 +9,10 @@ export type JwtUser = {
 
 export type CatchType = "release" | "weigh_in";
 export type MediaType = "photo" | "video";
-export type ReviewAction = "approve" | "reject" | "request_more_evidence" | "penalize";
+export type ReviewAction = "approve" | "reject" | "request_more_evidence" | "penalize" | "set_pending";
 
 export * from "./demoReset";
+export * from "./experienceApplication";
 export { isDemoMode, isDemoModeEnabled } from "./demoMode";
 export {
   DEMO_TOURNAMENT_ID,

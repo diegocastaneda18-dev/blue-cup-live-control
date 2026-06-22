@@ -19,15 +19,19 @@ import {
   SectionLabel
 } from "../../../components/PageChrome";
 import { useToast } from "../../../components/Toast";
-import { demoTeamsForTournament, demoTournamentsList, isDemoMode } from "@bluecup/types";
+import { demoLeaderboardForTournament, demoTeamsForTournament, demoTournamentsList, isDemoMode } from "@bluecup/types";
 import { getPublicApiBaseUrl, publicApiUrl } from "../../../lib/env";
+import { dispatchLeaderboardRefresh } from "../../../lib/liveEvents";
+import { normalizeRole } from "../../../lib/rbac";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 const ACCESS_TOKEN_KEY = "accessToken";
+const API_ME = publicApiUrl("/auth/me");
 const API_TOURNAMENTS = publicApiUrl("/tournaments");
 const API_TEAMS = publicApiUrl("/teams");
 const API_TEAM_BOAT = publicApiUrl("/teams/boat");
+const API_LEADERBOARD = publicApiUrl("/leaderboard");
 
 type Tournament = { id: string; name: string };
 
@@ -40,8 +44,19 @@ type TeamRow = {
   id: string;
   name: string;
   captainUserId: string | null;
+  manualScoreAdjustment?: number;
+  manualScoreReason?: string | null;
+  manualScoreUpdatedAt?: string | null;
+  manualScoreUpdatedBy?: { displayName: string; email: string } | null;
   boat: { name: string; registry: string | null } | null;
   members: TeamMemberRow[];
+};
+
+type ScoreRow = {
+  teamId: string;
+  automaticScore: number;
+  manualScoreAdjustment: number;
+  finalScore: number;
 };
 
 function authHeaders(): HeadersInit {
@@ -67,6 +82,10 @@ export default function TeamsPage() {
   const router = useRouter();
   const toast = useToast();
   const [hasToken, setHasToken] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const isAdmin = normalizeRole(userRole) === "admin";
+
+  const [scoreByTeam, setScoreByTeam] = useState<Record<string, ScoreRow>>({});
 
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [tournamentsError, setTournamentsError] = useState<string | null>(null);
@@ -92,12 +111,34 @@ export default function TeamsPage() {
   const [boatEditPending, setBoatEditPending] = useState(false);
   const [boatEditError, setBoatEditError] = useState<string | null>(null);
 
+  const [editingScoreTeamId, setEditingScoreTeamId] = useState<string | null>(null);
+  const [scoreAdjustment, setScoreAdjustment] = useState("");
+  const [scoreReason, setScoreReason] = useState("");
+  const [scoreEditPending, setScoreEditPending] = useState(false);
+  const [scoreEditError, setScoreEditError] = useState<string | null>(null);
+
   const refreshTokenState = useCallback(() => {
     setHasToken(Boolean(typeof window !== "undefined" && localStorage.getItem(ACCESS_TOKEN_KEY)));
   }, []);
 
   useEffect(() => {
     refreshTokenState();
+    const token = typeof window !== "undefined" ? localStorage.getItem(ACCESS_TOKEN_KEY) : null;
+    if (!token) return;
+    void (async () => {
+      try {
+        const res = await fetch(API_ME, {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const json = (await res.json()) as { user?: { role?: string } };
+          setUserRole(json.user?.role != null ? String(json.user.role) : null);
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
   }, [refreshTokenState]);
 
   const loadTournaments = useCallback(async () => {
@@ -165,6 +206,8 @@ export default function TeamsPage() {
     setNewBoatRegistry("");
     setEditingBoatTeamId(null);
     setBoatEditError(null);
+    setEditingScoreTeamId(null);
+    setScoreEditError(null);
   }, [selectedId]);
 
   useEffect(() => {
@@ -227,6 +270,77 @@ export default function TeamsPage() {
     };
   }, [selectedId, router, refreshTokenState]);
 
+  useEffect(() => {
+    if (!selectedId) {
+      setScoreByTeam({});
+      return;
+    }
+    let cancelled = false;
+    async function loadScores() {
+      const demo = isDemoMode();
+      try {
+        const url = `${API_LEADERBOARD}?tournamentId=${encodeURIComponent(selectedId)}`;
+        const res = await fetch(url, { cache: "no-store", headers: { ...authHeaders() } });
+        if (cancelled) return;
+        if (!res.ok) {
+          if (demo) {
+            const rows = demoLeaderboardForTournament(selectedId);
+            const map: Record<string, ScoreRow> = {};
+            for (const r of rows) {
+              map[r.teamId] = {
+                teamId: r.teamId,
+                automaticScore: r.automaticScore,
+                manualScoreAdjustment: r.manualScoreAdjustment,
+                finalScore: r.finalScore
+              };
+            }
+            setScoreByTeam(map);
+          }
+          return;
+        }
+        const data = (await res.json()) as unknown;
+        const rows = Array.isArray(data)
+          ? (data as {
+              teamId: string;
+              automaticScore?: number;
+              manualScoreAdjustment?: number;
+              finalScore?: number;
+              pointsPreliminary?: number;
+              pointsOfficial?: number;
+            }[])
+          : [];
+        const map: Record<string, ScoreRow> = {};
+        for (const r of rows) {
+          map[r.teamId] = {
+            teamId: r.teamId,
+            automaticScore: r.automaticScore ?? r.pointsPreliminary ?? 0,
+            manualScoreAdjustment: r.manualScoreAdjustment ?? 0,
+            finalScore: r.finalScore ?? r.pointsOfficial ?? 0
+          };
+        }
+        setScoreByTeam(map);
+      } catch {
+        if (!cancelled && demo) {
+          const rows = demoLeaderboardForTournament(selectedId);
+          const map: Record<string, ScoreRow> = {};
+          for (const r of rows) {
+            map[r.teamId] = {
+              teamId: r.teamId,
+              automaticScore: r.automaticScore,
+              manualScoreAdjustment: r.manualScoreAdjustment,
+              finalScore: r.finalScore
+            };
+          }
+          setScoreByTeam(map);
+        }
+      }
+    }
+    void loadScores();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId, teams]);
+
   async function refreshTeamsList(token: string, tournamentId: string) {
     const url = `${API_TEAMS}/tournament/${encodeURIComponent(tournamentId)}`;
     const listRes = await fetch(url, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
@@ -281,6 +395,90 @@ export default function TeamsPage() {
       setBoatEditError(`Could not reach the API at ${getPublicApiBaseUrl()}.`);
     } finally {
       setBoatEditPending(false);
+    }
+  }
+
+  async function saveManualScore(teamId: string) {
+    const token = typeof window !== "undefined" ? localStorage.getItem(ACCESS_TOKEN_KEY) : null;
+    if (!token) {
+      setScoreEditError("Sign in to adjust scores.");
+      return;
+    }
+    const reason = scoreReason.trim();
+    if (reason.length < 3) {
+      setScoreEditError("A reason of at least 3 characters is required.");
+      return;
+    }
+    const raw = scoreAdjustment.trim();
+    if (raw.length === 0) {
+      setScoreEditError("Enter an adjustment amount (use 0 to clear a prior adjustment).");
+      return;
+    }
+    const adjustment = Number(raw);
+    if (Number.isNaN(adjustment)) {
+      setScoreEditError("Adjustment must be a valid number.");
+      return;
+    }
+
+    setScoreEditPending(true);
+    setScoreEditError(null);
+    try {
+      const res = await fetch(`${API_TEAMS}/${encodeURIComponent(teamId)}/manual-score`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ adjustment, reason })
+      });
+      const rawJson = (await res.json().catch(() => null)) as { message?: string | string[] } | null;
+      if (res.status === 401) {
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        refreshTokenState();
+        router.replace("/login");
+        return;
+      }
+      if (!res.ok) {
+        const msg = rawJson?.message;
+        const text = Array.isArray(msg) ? msg.join(" ") : msg;
+        setScoreEditError(text || `Score adjustment failed (${res.status}).`);
+        return;
+      }
+      toast.success("Manual score adjustment saved.");
+      setEditingScoreTeamId(null);
+      setScoreAdjustment("");
+      setScoreReason("");
+      dispatchLeaderboardRefresh();
+      await refreshTeamsList(token, selectedId);
+      const url = `${API_LEADERBOARD}?tournamentId=${encodeURIComponent(selectedId)}`;
+      const lbRes = await fetch(url, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+      if (lbRes.ok) {
+        const data = (await lbRes.json()) as unknown;
+        const rows = Array.isArray(data)
+          ? (data as {
+              teamId: string;
+              automaticScore?: number;
+              manualScoreAdjustment?: number;
+              finalScore?: number;
+              pointsPreliminary?: number;
+              pointsOfficial?: number;
+            }[])
+          : [];
+        const map: Record<string, ScoreRow> = {};
+        for (const r of rows) {
+          map[r.teamId] = {
+            teamId: r.teamId,
+            automaticScore: r.automaticScore ?? r.pointsPreliminary ?? 0,
+            manualScoreAdjustment: r.manualScoreAdjustment ?? 0,
+            finalScore: r.finalScore ?? r.pointsOfficial ?? 0
+          };
+        }
+        setScoreByTeam(map);
+      }
+    } catch {
+      setScoreEditError(`Could not reach the API at ${getPublicApiBaseUrl()}.`);
+    } finally {
+      setScoreEditPending(false);
     }
   }
 
@@ -572,12 +770,67 @@ export default function TeamsPage() {
               <ul className={`divide-y divide-white/[0.06] ${cardListShellClass}`}>
                 {teams.map((team) => (
                   <li key={team.id} className="px-4 py-4 transition hover:bg-white/[0.02] sm:px-5 sm:py-5">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="text-base font-semibold tracking-tight text-slate-50">{team.name}</div>
+                    <div className="text-base font-semibold tracking-tight text-slate-50">{team.name}</div>
+                    <dl className="mt-3 grid gap-4 text-sm text-slate-300 sm:grid-cols-2">
+                      <div>
+                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Captain</dt>
+                        <dd className="mt-1 leading-snug text-slate-200">{captainLabel(team)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Boat</dt>
+                        <dd className="mt-1 leading-snug text-slate-200">{boatLabel(team)}</dd>
+                      </div>
+                      {scoreByTeam[team.id] ? (
+                        <>
+                          <div>
+                            <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                              Automatic score
+                            </dt>
+                            <dd className="mt-1 tabular-nums text-slate-200">
+                              {scoreByTeam[team.id].automaticScore.toLocaleString(undefined, {
+                                maximumFractionDigits: 1
+                              })}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                              Final score
+                            </dt>
+                            <dd className="mt-1 tabular-nums font-medium text-amber-100/90">
+                              {scoreByTeam[team.id].finalScore.toLocaleString(undefined, {
+                                maximumFractionDigits: 1
+                              })}
+                              {(team.manualScoreAdjustment ?? scoreByTeam[team.id].manualScoreAdjustment) !== 0 ? (
+                                <span className="ml-2 text-xs font-normal text-slate-500">
+                                  (adj{" "}
+                                  {(team.manualScoreAdjustment ?? scoreByTeam[team.id].manualScoreAdjustment) > 0
+                                    ? "+"
+                                    : ""}
+                                  {(team.manualScoreAdjustment ?? scoreByTeam[team.id].manualScoreAdjustment).toLocaleString(
+                                    undefined,
+                                    { maximumFractionDigits: 1 }
+                                  )}
+                                  )
+                                </span>
+                              ) : null}
+                            </dd>
+                          </div>
+                        </>
+                      ) : null}
+                    </dl>
+                    {team.manualScoreReason?.trim() ? (
+                      <p className="mt-3 text-xs leading-relaxed text-slate-500">
+                        Last adjustment: {team.manualScoreReason}
+                        {team.manualScoreUpdatedBy
+                          ? ` · ${team.manualScoreUpdatedBy.displayName}`
+                          : null}
+                      </p>
+                    ) : null}
+                    <div className="mt-3 flex flex-wrap gap-2">
                       {hasToken ? (
                         <button
                           type="button"
-                          className={`${btnGhostClass} ${btnResponsiveClass} shrink-0 self-stretch text-xs sm:w-auto sm:self-start sm:text-sm`}
+                          className={`${btnGhostClass} ${btnResponsiveClass} text-xs sm:text-sm`}
                           onClick={() => {
                             setBoatEditError(null);
                             if (editingBoatTeamId === team.id) {
@@ -589,20 +842,80 @@ export default function TeamsPage() {
                             }
                           }}
                         >
-                          {editingBoatTeamId === team.id ? "Close" : team.boat ? "Edit boat" : "Add boat"}
+                          {editingBoatTeamId === team.id ? "Close boat" : team.boat ? "Edit boat" : "Add boat"}
+                        </button>
+                      ) : null}
+                      {isAdmin && hasToken ? (
+                        <button
+                          type="button"
+                          className={`${btnGhostClass} ${btnResponsiveClass} text-xs sm:text-sm`}
+                          onClick={() => {
+                            setScoreEditError(null);
+                            if (editingScoreTeamId === team.id) {
+                              setEditingScoreTeamId(null);
+                            } else {
+                              setEditingScoreTeamId(team.id);
+                              setScoreAdjustment(
+                                String(team.manualScoreAdjustment ?? scoreByTeam[team.id]?.manualScoreAdjustment ?? 0)
+                              );
+                              setScoreReason(team.manualScoreReason ?? "");
+                            }
+                          }}
+                        >
+                          {editingScoreTeamId === team.id ? "Close score" : "Adjust score"}
                         </button>
                       ) : null}
                     </div>
-                    <dl className="mt-3 grid gap-4 text-sm text-slate-300 sm:grid-cols-2">
-                      <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Captain</dt>
-                        <dd className="mt-1 leading-snug text-slate-200">{captainLabel(team)}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Boat</dt>
-                        <dd className="mt-1 leading-snug text-slate-200">{boatLabel(team)}</dd>
-                      </div>
-                    </dl>
+                    {editingScoreTeamId === team.id && isAdmin && hasToken ? (
+                      <form
+                        className="mt-4 grid gap-3 rounded-xl border border-amber-400/20 bg-amber-500/5 p-4"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          void saveManualScore(team.id);
+                        }}
+                      >
+                        {scoreEditError ? <InlineNotice variant="error">{scoreEditError}</InlineNotice> : null}
+                        <p className="text-xs leading-relaxed text-slate-400">
+                          Manual adjustments are added to the automatic catch score. They do not overwrite raw catch
+                          totals and are stored with your user id for audit.
+                        </p>
+                        <label className="grid gap-2 text-sm">
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                            Adjustment (+/−)
+                          </span>
+                          <input
+                            required
+                            type="number"
+                            step="any"
+                            value={scoreAdjustment}
+                            onChange={(e) => setScoreAdjustment(e.target.value)}
+                            className={fieldInputClass}
+                            placeholder="e.g. -10 or 25"
+                          />
+                        </label>
+                        <label className="grid gap-2 text-sm">
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                            Reason (required)
+                          </span>
+                          <textarea
+                            required
+                            minLength={3}
+                            rows={3}
+                            value={scoreReason}
+                            onChange={(e) => setScoreReason(e.target.value)}
+                            className={`${fieldInputClass} resize-y`}
+                            placeholder="Explain why this adjustment is being applied…"
+                          />
+                        </label>
+                        <button
+                          type="submit"
+                          disabled={scoreEditPending}
+                          className={`${btnPrimaryClass} ${btnResponsiveClass}`}
+                        >
+                          {scoreEditPending ? "Saving…" : "Save score adjustment"}
+                        </button>
+                      </form>
+                    ) : null}
                     {editingBoatTeamId === team.id && hasToken ? (
                       <form
                         className="mt-4 grid gap-3 rounded-xl border border-white/[0.08] bg-black/25 p-4"

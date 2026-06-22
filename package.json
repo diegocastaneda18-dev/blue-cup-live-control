@@ -13,13 +13,16 @@
     "db:up": "docker compose -f infra/docker/docker-compose.yml up -d",
     "db:down": "docker compose -f infra/docker/docker-compose.yml down",
     "db:reset": "docker compose -f infra/docker/docker-compose.yml down -v && docker compose -f infra/docker/docker-compose.yml up -d",
+    "experience:dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-experience.ps1",
+    "experience:web": "pnpm --filter @bluecup/web dev",
+    "experience:api": "pnpm db:up && pnpm --filter @bluecup/api dev",
     "api:dev": "turbo dev --filter=@bluecup/api",
     "web:dev": "turbo dev --filter=@bluecup/web",
     "seed": "turbo seed --filter=@bluecup/api"
   },
   "devDependencies": {
+    "concurrently": "^10.0.3",
     "turbo": "^2.5.5",
     "typescript": "^5.8.3"
   }
 }
-
