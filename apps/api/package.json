@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "nest start -b swc -p tsconfig.json --watch",
+    "dev": "nest start -p tsconfig.json --watch",
     "build": "nest build -p tsconfig.build.json",
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -47,7 +47,7 @@
     "@types/node": "^24.0.0",
     "@types/passport-jwt": "^4.0.1",
     "@types/uuid": "^10.0.0",
-    "prisma": "^6.8.2",
+    "prisma": "^6.19.3",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.8.3"
