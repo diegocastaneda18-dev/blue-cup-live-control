@@ -2,6 +2,7 @@
 const NAV_ALL: { href: string; label: string }[] = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/jackpots", label: "Jackpots" },
   { href: "/teams", label: "Teams" },
   { href: "/catches/new", label: "New Catch" },
   { href: "/catches", label: "Catch History" },
@@ -23,6 +24,7 @@ export function navLinksForRole(role: string): { href: string; label: string }[]
     return [
       { href: "/dashboard", label: "Dashboard" },
       { href: "/leaderboard", label: "Leaderboard" },
+      { href: "/jackpots", label: "Jackpots" },
       { href: "/catches", label: "Catch History" },
       { href: "/committee/catches", label: "Committee" }
     ];
@@ -33,7 +35,8 @@ export function navLinksForRole(role: string): { href: string; label: string }[]
       { href: "/teams", label: "Teams" },
       { href: "/catches/new", label: "New Catch" },
       { href: "/catches", label: "Catch History" },
-      { href: "/leaderboard", label: "Leaderboard" }
+      { href: "/leaderboard", label: "Leaderboard" },
+      { href: "/jackpots", label: "Jackpots" }
     ];
   }
   return [{ href: "/dashboard", label: "Dashboard" }];
@@ -62,6 +65,7 @@ export function isPathAllowedForRole(role: string, pathname: string): boolean {
     if (p.startsWith("/committee")) return true;
     if (isDashboardPath(p)) return true;
     if (p === "/leaderboard" || p.startsWith("/leaderboard/")) return true;
+    if (p === "/jackpots" || p.startsWith("/jackpots/")) return true;
     if (p === "/catches" || p.startsWith("/catches/")) return true;
     return false;
   }
@@ -70,6 +74,7 @@ export function isPathAllowedForRole(role: string, pathname: string): boolean {
     if (p.startsWith("/committee")) return false;
     if (isDashboardPath(p)) return true;
     if (p === "/leaderboard" || p.startsWith("/leaderboard/")) return true;
+    if (p === "/jackpots" || p.startsWith("/jackpots/")) return true;
     if (p.startsWith("/teams")) return true;
     if (p === "/catches" || p.startsWith("/catches/")) return true;
     return false;

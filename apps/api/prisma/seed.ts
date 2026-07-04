@@ -1,4 +1,4 @@
-import { CatchStatus, CatchType, PrismaClient, ReviewAction, Role } from "@prisma/client";
+import { CatchStatus, CatchType, JackpotCategory, PrismaClient, ReviewAction, Role } from "@prisma/client";
 import * as argon2 from "argon2";
 
 const prisma = new PrismaClient();
@@ -132,18 +132,18 @@ async function main() {
 
   const teamAzul = await prisma.team.upsert({
     where: { tournamentId_name: { tournamentId: tournament.id, name: "Azul Dorado" } },
-    update: { captainUserId: captain.id },
-    create: { tournamentId: tournament.id, name: "Azul Dorado", captainUserId: captain.id }
+    update: { captainUserId: captain.id, usesSonar: true },
+    create: { tournamentId: tournament.id, name: "Azul Dorado", captainUserId: captain.id, usesSonar: true }
   });
   const teamMarlin = await prisma.team.upsert({
     where: { tournamentId_name: { tournamentId: tournament.id, name: "Marlin Royale" } },
-    update: {},
-    create: { tournamentId: tournament.id, name: "Marlin Royale", captainUserId: null }
+    update: { usesSonar: true },
+    create: { tournamentId: tournament.id, name: "Marlin Royale", captainUserId: null, usesSonar: true }
   });
   const teamTuna = await prisma.team.upsert({
     where: { tournamentId_name: { tournamentId: tournament.id, name: "Atún Brisa" } },
-    update: {},
-    create: { tournamentId: tournament.id, name: "Atún Brisa", captainUserId: null }
+    update: { usesSonar: false },
+    create: { tournamentId: tournament.id, name: "Atún Brisa", captainUserId: null, usesSonar: false }
   });
 
   await prisma.boat.upsert({
@@ -323,6 +323,82 @@ async function main() {
     }
   });
 
+  await prisma.jackpotTier.deleteMany({ where: { tournamentId: tournament.id } });
+  await prisma.teamJackpotEligibility.deleteMany({ where: { tournamentId: tournament.id } });
+
+  const jackpotTierDefs = [
+    { category: JackpotCategory.sonar, name: "Daily Jackpot — $3,000", amountUsd: 3000, sortOrder: 1 },
+    { category: JackpotCategory.sonar, name: "Daily Jackpot — $1,000", amountUsd: 1000, sortOrder: 2 },
+    { category: JackpotCategory.non_sonar, name: "Daily Jackpot — $3,000", amountUsd: 3000, sortOrder: 1 },
+    { category: JackpotCategory.non_sonar, name: "Daily Jackpot — $1,000", amountUsd: 1000, sortOrder: 2 }
+  ];
+  for (const tier of jackpotTierDefs) {
+    await prisma.jackpotTier.create({
+      data: { tournamentId: tournament.id, ...tier }
+    });
+  }
+
+  await prisma.catch.create({
+    data: {
+      tournamentId: tournament.id,
+      teamId: teamMarlin.id,
+      createdById: teamMember.id,
+      categoryId: catRelease.id,
+      speciesId: specMarlin.id,
+      type: CatchType.release,
+      status: CatchStatus.approved,
+      scorePreliminary: 420,
+      scoreOfficial: 0,
+      notes: "Second sonar release for daily jackpot demo.",
+      occurredAtClient: new Date("2026-07-11T15:10:00.000Z")
+    }
+  });
+
+  await prisma.catch.create({
+    data: {
+      tournamentId: tournament.id,
+      teamId: teamTuna.id,
+      createdById: teamMember.id,
+      categoryId: catRelease.id,
+      speciesId: specTuna.id,
+      type: CatchType.release,
+      status: CatchStatus.approved,
+      scorePreliminary: 190,
+      scoreOfficial: 0,
+      notes: "Non-sonar release for daily jackpot demo.",
+      occurredAtClient: new Date("2026-07-11T13:40:00.000Z")
+    }
+  });
+
+  await prisma.teamJackpotEligibility.createMany({
+    data: [
+      {
+        tournamentId: tournament.id,
+        teamId: teamAzul.id,
+        category: JackpotCategory.sonar,
+        isEligible: true,
+        approvedById: admin.id,
+        approvedAt: new Date()
+      },
+      {
+        tournamentId: tournament.id,
+        teamId: teamMarlin.id,
+        category: JackpotCategory.sonar,
+        isEligible: true,
+        approvedById: admin.id,
+        approvedAt: new Date()
+      },
+      {
+        tournamentId: tournament.id,
+        teamId: teamTuna.id,
+        category: JackpotCategory.non_sonar,
+        isEligible: true,
+        approvedById: admin.id,
+        approvedAt: new Date()
+      }
+    ]
+  });
+
   // eslint-disable-next-line no-console
   console.log("Seed completed", {
     tournament: tournament.name,
@@ -335,7 +411,9 @@ async function main() {
     },
     password: "BlueCup123!",
     leaderboardHint:
-      "Marlin Royale leads on official points; Azul Dorado has strong preliminary; Atún Brisa has rejected/penalized only."
+      "Marlin Royale leads on official points; Azul Dorado has strong preliminary; Atún Brisa has rejected/penalized only.",
+    jackpotsHint:
+      "2026-07-11 sonar: Marlin Royale 420, Azul Dorado 280. Non Sonar: Atún Brisa 190."
   });
 }
 

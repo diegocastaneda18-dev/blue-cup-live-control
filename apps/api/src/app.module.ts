@@ -4,6 +4,7 @@ import { PrismaModule } from "./infra/prisma/prisma.module";
 import { AuditModule } from "./modules/audit/audit.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { CatchModule } from "./modules/catch/catch.module";
+import { JackpotsModule } from "./modules/jackpots/jackpots.module";
 import { LeaderboardModule } from "./modules/leaderboard/leaderboard.module";
 import { TeamModule } from "./modules/team/team.module";
 import { TournamentModule } from "./modules/tournament/tournament.module";
@@ -20,6 +21,7 @@ import { HealthController } from "./health.controller";
     TournamentModule,
     TeamModule,
     CatchModule,
+    JackpotsModule,
     LeaderboardModule
   ],
   controllers: [HealthController]

@@ -15,6 +15,11 @@ enum Role {
   public_view
 }
 
+enum JackpotCategory {
+  sonar
+  non_sonar
+}
+
 enum CatchStatus {
   draft
   submitted
@@ -68,6 +73,7 @@ model User {
   auditLogs       AuditLog[]
   protests        Protest[]
   penalties       Penalty[]
+  jackpotEligibilityApprovals TeamJackpotEligibility[] @relation("JackpotEligibilityApprover")
 }
 
 model Tournament {
@@ -88,6 +94,8 @@ model Tournament {
   catches      Catch[]
   penalties    Penalty[]
   protests     Protest[]
+  jackpotTiers JackpotTier[]
+  jackpotEligibilities TeamJackpotEligibility[]
 }
 
 model Team {
@@ -95,6 +103,7 @@ model Team {
   tournamentId  String
   name          String
   captainUserId String?
+  usesSonar     Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -104,6 +113,7 @@ model Team {
   catches    Catch[]
   protests   Protest[]
   penalties  Penalty[]
+  jackpotEligibilities TeamJackpotEligibility[]
 
   @@unique([tournamentId, name])
 }
@@ -302,4 +312,40 @@ model AuditLog {
 
   @@index([entity, entityId])
   @@index([createdAt])
+}
+
+model JackpotTier {
+  id           String          @id @default(uuid())
+  tournamentId String
+  category     JackpotCategory
+  name         String
+  amountUsd    Int
+  sortOrder    Int             @default(1)
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, category, sortOrder])
+  @@index([tournamentId, category])
+}
+
+model TeamJackpotEligibility {
+  id           String          @id @default(uuid())
+  tournamentId String
+  teamId       String
+  category     JackpotCategory
+  isEligible   Boolean         @default(false)
+  approvedById String?
+  approvedAt   DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  team       Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  approvedBy User?      @relation("JackpotEligibilityApprover", fields: [approvedById], references: [id])
+
+  @@unique([tournamentId, teamId, category])
+  @@index([tournamentId, category])
 }
