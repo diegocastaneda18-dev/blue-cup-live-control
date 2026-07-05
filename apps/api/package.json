@@ -12,6 +12,7 @@
     "prisma:migrate": "prisma migrate dev",
     "backfill:release-scoring": "ts-node -r tsconfig-paths/register prisma/backfill-release-scoring.ts",
     "one-time:upsert-las-marias-2026-species": "ts-node -r tsconfig-paths/register prisma/upsert-las-marias-2026-species.ts",
+    "one-time:upsert-jackpot-tiers-tournament-2": "ts-node -r tsconfig-paths/register prisma/upsert-jackpot-tiers-tournament-2.ts",
     "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts",
     "create-admin-user": "ts-node -r tsconfig-paths/register prisma/create-admin-user.ts"
   },
