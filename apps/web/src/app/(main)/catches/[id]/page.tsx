@@ -2,6 +2,18 @@
 
 import { Card } from "@bluecup/ui";
 import { CatchStatusBadge } from "../../../../components/CatchStatusBadge";
+import { MobileScoreHero } from "../../../../components/MobileAppUi";
+import {
+  btnGhostClass,
+  btnPrimaryClass,
+  btnResponsiveClass,
+  contentStackClass,
+  InlineNotice,
+  LoadingBlock,
+  PageHeader,
+  PageMain,
+  SectionLabel
+} from "../../../../components/PageChrome";
 import { demoCatchDetailById, isDemoMode } from "@bluecup/types";
 import { publicApiUrl } from "../../../../lib/env";
 import Link from "next/link";
@@ -52,6 +64,12 @@ function formatWhen(iso: string) {
   } catch {
     return iso;
   }
+}
+
+function speciesOrCategory(data: CatchDetail) {
+  if (data.species) return `${data.species.name} (${data.species.code})`;
+  if (data.category) return `${data.category.name} (${data.category.code})`;
+  return null;
 }
 
 export default function CatchDetailPage() {
@@ -134,148 +152,151 @@ export default function CatchDetailPage() {
   const reviews = data?.reviews ?? [];
 
   return (
-    <main className="mx-auto max-w-3xl p-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Link
-          href="/catches"
-          className="text-sm font-medium text-sky-300 hover:text-sky-200"
-        >
-          ← Back to history
-        </Link>
-        <Link
-          href="/catches/new"
-          className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-white/10"
-        >
-          New catch
-        </Link>
-      </div>
+    <PageMain className="max-w-3xl">
+      <PageHeader
+        kicker="Catch record"
+        title="Catch detail"
+        description="Full submission record — status, measurements, media, and committee reviews."
+        aside={
+          <div className="grid w-full gap-2 sm:w-auto sm:flex sm:flex-wrap">
+            <Link href="/catches" className={`${btnGhostClass} ${btnResponsiveClass}`}>
+              ← History
+            </Link>
+            <Link href="/catches/new" className={`${btnPrimaryClass} ${btnResponsiveClass}`}>
+              New catch
+            </Link>
+          </div>
+        }
+      />
 
-      <div className="mt-6">
+      <div className={contentStackClass}>
         {loading ? (
-          <div className="flex flex-col items-center gap-3 py-16">
-            <div
-              className="h-9 w-9 animate-spin rounded-full border-2 border-amber-400/25 border-t-amber-400"
-              aria-hidden
-            />
-            <p className="text-sm text-slate-400">Loading catch…</p>
-          </div>
+          <LoadingBlock label="Loading catch…" />
         ) : error ? (
-          <Card title="Catch">
-            <p className="text-sm text-red-100">{error}</p>
-          </Card>
+          <InlineNotice variant="error">{error}</InlineNotice>
         ) : !data ? null : (
-          <div className="grid gap-6">
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Catch detail</h1>
-              <CatchStatusBadge status={data.status} size="md" />
-            </div>
-            <p className="font-mono text-xs text-slate-500">{data.id}</p>
+          <>
+            <MobileScoreHero
+              status={data.status}
+              score={score}
+              type={data.type}
+              speciesOrCategory={speciesOrCategory(data)}
+            />
+            <p className="font-mono text-xs text-slate-600">{data.id}</p>
 
-            <Card title="Summary">
-              <dl className="grid gap-3 text-sm sm:grid-cols-2">
-                <div>
-                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Type</dt>
-                  <dd className="mt-1 capitalize text-slate-100">{data.type.replace(/_/g, " ")}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Score</dt>
-                  <dd className="mt-1 text-amber-100/90">{score ?? "—"}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Created</dt>
-                  <dd className="mt-1 text-slate-300">{formatWhen(data.createdAt)}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Updated</dt>
-                  <dd className="mt-1 text-slate-300">{formatWhen(data.updatedAt)}</dd>
-                </div>
-                {data.category ? (
-                  <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Category</dt>
-                    <dd className="mt-1 text-slate-200">
-                      {data.category.name} <span className="text-slate-500">({data.category.code})</span>
+            <div>
+              <SectionLabel className="mb-3 text-slate-500">Submission data</SectionLabel>
+              <Card title="Summary">
+                <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                  <div className="rounded-xl border border-white/[0.06] bg-black/20 px-4 py-3 sm:border-0 sm:bg-transparent sm:p-0">
+                    <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Status</dt>
+                    <dd className="mt-2">
+                      <CatchStatusBadge status={data.status} size="lg" />
                     </dd>
                   </div>
-                ) : null}
-                {data.species ? (
-                  <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Species</dt>
-                    <dd className="mt-1 text-slate-200">
-                      {data.species.name} <span className="text-slate-500">({data.species.code})</span>
+                  <div className="rounded-xl border border-white/[0.06] bg-black/20 px-4 py-3 sm:border-0 sm:bg-transparent sm:p-0">
+                    <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Type</dt>
+                    <dd className="mt-2 text-base font-semibold capitalize text-slate-100">
+                      {data.type.replace(/_/g, " ")}
                     </dd>
                   </div>
-                ) : null}
-                {(data.weightKg != null || data.lengthCm != null) && (
+                  <div>
+                    <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Created</dt>
+                    <dd className="mt-1 text-base text-slate-300">{formatWhen(data.createdAt)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Updated</dt>
+                    <dd className="mt-1 text-base text-slate-300">{formatWhen(data.updatedAt)}</dd>
+                  </div>
+                  {(data.weightKg != null || data.lengthCm != null) && (
+                    <div className="sm:col-span-2">
+                      <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Measurements</dt>
+                      <dd className="mt-1 text-base text-slate-300">
+                        {data.weightKg != null ? `${data.weightKg} kg` : "—"}
+                        {data.lengthCm != null ? ` · ${data.lengthCm} cm` : ""}
+                      </dd>
+                    </div>
+                  )}
                   <div className="sm:col-span-2">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Measurements</dt>
-                    <dd className="mt-1 text-slate-300">
-                      {data.weightKg != null ? `${data.weightKg} kg` : "—"}
-                      {data.lengthCm != null ? ` · ${data.lengthCm} cm` : ""}
+                    <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Angler notes</dt>
+                    <dd className="mt-1 text-base leading-relaxed text-slate-300">
+                      {data.notes?.trim() ? data.notes : "—"}
                     </dd>
                   </div>
+                </dl>
+              </Card>
+            </div>
+
+            <div>
+              <SectionLabel className="mb-3 text-slate-500">Evidence</SectionLabel>
+              <Card title="Media">
+                {data.media && data.media.length > 0 ? (
+                  <ul className="grid gap-3">
+                    {data.media.map((m) => (
+                      <li key={m.id}>
+                        <a
+                          href={m.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 transition active:scale-[0.99] hover:border-sky-500/25"
+                        >
+                          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold capitalize text-amber-100">
+                            {m.type}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-sky-300">
+                            {m.objectKey || "Open media"}
+                          </span>
+                          <span className="text-xs text-slate-500">Open →</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-slate-500">No media attached.</p>
                 )}
-                <div className="sm:col-span-2">
-                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Angler notes</dt>
-                  <dd className="mt-1 text-slate-300">{data.notes?.trim() ? data.notes : "—"}</dd>
-                </div>
-              </dl>
-            </Card>
+              </Card>
+            </div>
 
-            <Card title="Media">
-              {data.media && data.media.length > 0 ? (
-                <ul className="space-y-3">
-                  {data.media.map((m) => (
-                    <li
-                      key={m.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2"
-                    >
-                      <span className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-amber-100/90">
-                        {m.type}
-                      </span>
-                      <a
-                        href={m.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="min-w-0 flex-1 truncate text-right text-sm text-sky-300 underline decoration-sky-500/40 hover:text-sky-200"
+            <div>
+              <SectionLabel className="mb-3 text-slate-500">Committee</SectionLabel>
+              <Card title="Reviews">
+                {reviews.length === 0 ? (
+                  <p className="text-sm text-slate-500">No committee reviews yet.</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {reviews.map((r) => (
+                      <li
+                        key={r.id}
+                        className="rounded-2xl border border-white/10 bg-black/25 px-4 py-4 text-sm"
                       >
-                        {m.objectKey}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-slate-500">No media attached.</p>
-              )}
-            </Card>
-
-            <Card title="Reviews">
-              {reviews.length === 0 ? (
-                <p className="text-sm text-slate-500">No committee reviews yet.</p>
-              ) : (
-                <ul className="space-y-4">
-                  {reviews.map((r) => (
-                    <li key={r.id} className="rounded-lg border border-white/10 bg-black/25 px-4 py-3 text-sm">
-                      <div className="flex flex-wrap items-baseline justify-between gap-2">
-                        <span className="font-medium capitalize text-slate-100">{r.action.replace(/_/g, " ")}</span>
-                        <span className="text-xs text-slate-500">{formatWhen(r.createdAt)}</span>
-                      </div>
-                      {r.reviewer ? (
-                        <p className="mt-1 text-xs text-slate-500">
-                          {r.reviewer.displayName} · {r.reviewer.email}
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <span className="text-base font-semibold capitalize text-slate-100">
+                            {r.action.replace(/_/g, " ")}
+                          </span>
+                          <span className="text-xs text-slate-500">{formatWhen(r.createdAt)}</span>
+                        </div>
+                        {r.reviewer ? (
+                          <p className="mt-1 text-xs text-slate-500">
+                            {r.reviewer.displayName} · {r.reviewer.email}
+                          </p>
+                        ) : null}
+                        {r.penaltyPoints != null ? (
+                          <p className="mt-2 text-sm font-medium text-rose-200/90">
+                            Penalty points: {r.penaltyPoints}
+                          </p>
+                        ) : null}
+                        <p className="mt-2 text-base leading-relaxed text-slate-300">
+                          {r.notes?.trim() ? r.notes : "—"}
                         </p>
-                      ) : null}
-                      {r.penaltyPoints != null ? (
-                        <p className="mt-2 text-xs font-medium text-rose-200/90">Penalty points: {r.penaltyPoints}</p>
-                      ) : null}
-                      <p className="mt-2 text-slate-300">{r.notes?.trim() ? r.notes : "—"}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-          </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Card>
+            </div>
+          </>
         )}
       </div>
-    </main>
+    </PageMain>
   );
 }

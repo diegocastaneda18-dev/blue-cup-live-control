@@ -5,7 +5,7 @@ import Link from "next/link";
 export function PageMain({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <main
-      className={`mx-auto max-w-4xl px-4 pb-mobile-nav pt-5 sm:px-6 sm:pt-10 lg:pb-20 ${className}`.trim()}
+      className={`mx-auto max-w-4xl px-4 pb-mobile-nav pt-4 sm:px-6 sm:pt-10 lg:pb-20 ${className}`.trim()}
     >
       {children}
     </main>
@@ -31,7 +31,7 @@ export function PageHeader({
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-400/90">{kicker}</p>
         ) : null}
         <h1 className="text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">{title}</h1>
-        <p className="max-w-2xl text-sm leading-relaxed text-slate-400 sm:text-[15px]">{description}</p>
+        <p className="max-w-2xl text-sm leading-relaxed text-slate-400 sm:text-[15px] max-sm:line-clamp-2">{description}</p>
       </div>
       {aside ? (
         <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-start sm:pt-1">
@@ -70,13 +70,13 @@ export const fieldGroupClass =
 
 /** Shared input / select styling for dark nautical UI. */
 export const fieldInputClass =
-  "min-h-11 w-full rounded-xl border border-white/[0.08] bg-slate-950/55 px-3.5 py-2.5 text-base text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] outline-none ring-1 ring-transparent transition placeholder:text-slate-600 focus:border-sky-500/40 focus:ring-sky-500/20 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm";
+  "min-h-12 w-full rounded-xl border border-white/[0.08] bg-slate-950/55 px-3.5 py-3 text-base text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] outline-none ring-1 ring-transparent transition placeholder:text-slate-600 focus:border-sky-500/40 focus:ring-sky-500/20 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-11 sm:py-2.5 sm:text-sm";
 
 export const btnGhostClass =
-  "inline-flex min-h-11 items-center justify-center rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-slate-100 transition hover:border-sky-500/25 hover:bg-sky-500/10 hover:text-sky-100";
+  "inline-flex min-h-12 items-center justify-center rounded-xl border border-white/12 bg-white/[0.04] px-4 py-3 text-base font-medium text-slate-100 transition hover:border-sky-500/25 hover:bg-sky-500/10 hover:text-sky-100 active:scale-[0.98] sm:min-h-11 sm:py-2.5 sm:text-sm";
 
 export const btnPrimaryClass =
-  "inline-flex min-h-11 items-center justify-center rounded-xl bg-amber-500/90 px-4 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-amber-900/20 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-12 items-center justify-center rounded-xl bg-amber-500/90 px-4 py-3.5 text-base font-semibold text-slate-950 shadow-lg shadow-amber-900/20 transition hover:bg-amber-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-11 sm:py-3 sm:text-sm";
 
 export const btnSecondaryClass =
   "inline-flex min-h-11 items-center justify-center rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-3 text-sm font-semibold text-slate-100 transition hover:border-sky-500/25 hover:bg-sky-500/10 disabled:cursor-not-allowed disabled:opacity-50";
@@ -138,7 +138,7 @@ export function MobileQuickActions({ links }: { links: { href: string; label: st
 
   return (
     <nav
-      className="-mx-1 flex gap-2 overflow-x-auto pb-1 pt-1 [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden"
+      className="-mx-1 grid grid-cols-2 gap-2 pb-1 pt-2 sm:flex sm:gap-2 sm:overflow-x-auto lg:hidden"
       aria-label="Quick actions"
     >
       {links.map(({ href, label }) => {
@@ -147,9 +147,9 @@ export function MobileQuickActions({ links }: { links: { href: string; label: st
           <Link
             key={href}
             href={href}
-            className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl px-4 text-sm font-semibold transition ${
+            className={`inline-flex min-h-12 items-center justify-center rounded-xl px-4 text-sm font-semibold transition active:scale-[0.98] ${
               isPrimary
-                ? "bg-amber-500/90 text-slate-950 shadow-md shadow-amber-950/30 hover:bg-amber-400"
+                ? "col-span-2 bg-amber-500/90 text-slate-950 shadow-md shadow-amber-950/30 hover:bg-amber-400 sm:col-span-1"
                 : "border border-white/[0.1] bg-white/[0.04] text-slate-100 hover:border-sky-500/25 hover:bg-sky-500/10"
             }`}
           >
@@ -164,8 +164,8 @@ export function MobileQuickActions({ links }: { links: { href: string; label: st
 /** Sticky primary action above the bottom tab bar on small screens. */
 export function StickyFormActions({ children }: { children: ReactNode }) {
   return (
-    <div className="sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-40 -mx-4 border-t border-white/[0.08] bg-slate-950/95 px-4 py-3 backdrop-blur-md sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none lg:bottom-auto">
-      {children}
+    <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-40 -mx-4 border-t border-white/[0.08] bg-slate-950/95 px-4 py-3 backdrop-blur-md sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none lg:bottom-auto">
+      <div className="grid gap-2">{children}</div>
     </div>
   );
 }

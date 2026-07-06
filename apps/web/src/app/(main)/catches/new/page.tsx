@@ -1,7 +1,11 @@
 "use client";
 
 import { Card } from "@bluecup/ui";
-import { useToast } from "../../../../components/Toast";
+import {
+  CollapsibleSection,
+  MediaCaptureField,
+  SegmentedControl
+} from "../../../../components/MobileAppUi";
 import {
   btnGhostClass,
   btnPrimaryClass,
@@ -25,8 +29,9 @@ import {
   demoTournamentsList,
   isDemoMode
 } from "@bluecup/types";
-import { publicApiUrl } from "../../../../lib/env";
 import Link from "next/link";
+import { publicApiUrl } from "../../../../lib/env";
+import { useToast } from "../../../../components/Toast";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
@@ -525,6 +530,18 @@ export default function NewCatchPage() {
           <SectionLabel className="mb-3 text-slate-500">Catch details</SectionLabel>
           <Card title="Submission form">
           <form className={formStackClass} onSubmit={onSubmit}>
+            <FieldGroup title="Catch type" description="How this fish was recorded.">
+              <SegmentedControl
+                ariaLabel="Catch type"
+                value={type}
+                onChange={(v) => setType(v)}
+                options={[
+                  { value: "release", label: "Release", hint: "Tagged and released — jackpot line" },
+                  { value: "weigh_in", label: "Weigh-in", hint: "Brought to scale for official weight" }
+                ]}
+              />
+            </FieldGroup>
+
             <FieldGroup title="Tournament" description="Pick the event and category for this catch.">
               <FormField label="Tournament">
                 <select
@@ -582,17 +599,6 @@ export default function NewCatchPage() {
                 </select>
               </FormField>
 
-              <FormField label="Catch type">
-                <select
-                  required
-                  value={type}
-                  onChange={(e) => setType(e.target.value as "release" | "weigh_in")}
-                  className={fieldInputClass}
-                >
-                  <option value="release">Release</option>
-                  <option value="weigh_in">Weigh-in</option>
-                </select>
-              </FormField>
             </FieldGroup>
 
             <FieldGroup title="Measurements" description="Add weight or length when available.">
@@ -642,39 +648,32 @@ export default function NewCatchPage() {
 
             <FieldGroup
               title="Photo & video"
-              description="Tap to capture evidence from your phone. Upload happens when you submit."
+              description="Capture evidence with one tap — uploads when you submit."
             >
-              <FormField label="Photo" optional>
-                <input
-                  key={photoEvidenceInputKey}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="min-h-11 w-full text-sm text-slate-400 file:mr-3 file:min-h-11 file:rounded-xl file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-slate-200"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0] ?? null;
-                    setPhotoFile(f);
-                    setPhotoObjectKey("");
-                    setPhotoUrl("");
-                  }}
-                />
-              </FormField>
+              <MediaCaptureField
+                kind="photo"
+                label="Photo evidence"
+                file={photoFile}
+                inputKey={photoEvidenceInputKey}
+                onFile={(f) => {
+                  setPhotoFile(f);
+                  setPhotoObjectKey("");
+                  setPhotoUrl("");
+                }}
+              />
 
-              <FormField label="Video" optional hint="Large clips may need to be sent to the committee separately.">
-                <input
-                  key={videoEvidenceInputKey}
-                  type="file"
-                  accept="video/*"
-                  capture="environment"
-                  className="min-h-11 w-full text-sm text-slate-400 file:mr-3 file:min-h-11 file:rounded-xl file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-slate-200"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0] ?? null;
-                    setVideoFile(f);
-                    setVideoObjectKey("");
-                    setVideoUrl("");
-                  }}
-                />
-              </FormField>
+              <MediaCaptureField
+                kind="video"
+                label="Video evidence"
+                hint="Large clips may need to be sent to the committee separately."
+                file={videoFile}
+                inputKey={videoEvidenceInputKey}
+                onFile={(f) => {
+                  setVideoFile(f);
+                  setVideoObjectKey("");
+                  setVideoUrl("");
+                }}
+              />
 
               <button
                 type="button"
@@ -737,9 +736,7 @@ export default function NewCatchPage() {
           </Card>
         </div>
 
-        <div>
-          <SectionLabel className="mb-3 text-slate-500">Teams in tournament</SectionLabel>
-          <Card title="Registered crews">
+        <CollapsibleSection title="Teams in this tournament">
           {teamsError ? (
             <InlineNotice variant="error">{teamsError}</InlineNotice>
           ) : !tournamentId ? (
@@ -749,14 +746,13 @@ export default function NewCatchPage() {
           ) : (
             <ul className="divide-y divide-white/[0.06] text-sm text-slate-200">
               {teams.map((t) => (
-                <li key={t.id} className="min-h-11 py-3">
+                <li key={t.id} className="min-h-12 py-3">
                   {t.name}
                 </li>
               ))}
             </ul>
           )}
-          </Card>
-        </div>
+        </CollapsibleSection>
       </div>
     </PageMain>
   );

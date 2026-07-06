@@ -2,13 +2,12 @@
 
 import { Card } from "@bluecup/ui";
 import { EmptyState } from "../../../components/EmptyState";
+import { TeamListCard } from "../../../components/teams/TeamProfileView";
 import {
-  cardListShellClass,
   contentStackClass,
   FieldGroup,
   fieldInputClass,
   FormField,
-  btnGhostClass,
   btnPrimaryClass,
   btnResponsiveClass,
   formStackClass,
@@ -19,7 +18,7 @@ import {
   SectionLabel
 } from "../../../components/PageChrome";
 import { useToast } from "../../../components/Toast";
-import { demoTeamsForTournament, demoTournamentsList, isDemoMode } from "@bluecup/types";
+import { demoLeaderboardForTournament, demoTeamsForTournament, demoTournamentsList, isDemoMode } from "@bluecup/types";
 import { getPublicApiBaseUrl, publicApiUrl } from "../../../lib/env";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -40,27 +39,19 @@ type TeamRow = {
   id: string;
   name: string;
   captainUserId: string | null;
+  usesSonar?: boolean;
   boat: { name: string; registry: string | null } | null;
   members: TeamMemberRow[];
 };
+
+function scoreForLeaderboardRow(row: { pointsOfficial: number; pointsPreliminary: number }) {
+  return Math.max(row.pointsOfficial ?? 0, row.pointsPreliminary ?? 0);
+}
 
 function authHeaders(): HeadersInit {
   if (typeof window === "undefined") return {};
   const token = localStorage.getItem(ACCESS_TOKEN_KEY);
   return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-function captainLabel(team: TeamRow) {
-  if (!team.captainUserId) return "—";
-  const m = team.members?.find((x) => x.userId === team.captainUserId);
-  if (m?.user) return `${m.user.displayName} (${m.user.email})`;
-  return team.captainUserId;
-}
-
-function boatLabel(team: TeamRow) {
-  if (!team.boat) return "—";
-  const reg = team.boat.registry?.trim();
-  return reg ? `${team.boat.name} · ${reg}` : team.boat.name;
 }
 
 export default function TeamsPage() {
@@ -76,6 +67,7 @@ export default function TeamsPage() {
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [teamsLoading, setTeamsLoading] = useState(false);
   const [teamsError, setTeamsError] = useState<string | null>(null);
+  const [scoreByTeamId, setScoreByTeamId] = useState<Record<string, number>>({});
 
   const [newName, setNewName] = useState("");
   const [captainUserId, setCaptainUserId] = useState("");
@@ -85,12 +77,6 @@ export default function TeamsPage() {
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [formBoatWarning, setFormBoatWarning] = useState<string | null>(null);
-
-  const [editingBoatTeamId, setEditingBoatTeamId] = useState<string | null>(null);
-  const [editBoatName, setEditBoatName] = useState("");
-  const [editBoatRegistry, setEditBoatRegistry] = useState("");
-  const [boatEditPending, setBoatEditPending] = useState(false);
-  const [boatEditError, setBoatEditError] = useState<string | null>(null);
 
   const refreshTokenState = useCallback(() => {
     setHasToken(Boolean(typeof window !== "undefined" && localStorage.getItem(ACCESS_TOKEN_KEY)));
@@ -163,8 +149,6 @@ export default function TeamsPage() {
     setFormBoatWarning(null);
     setNewBoatName("");
     setNewBoatRegistry("");
-    setEditingBoatTeamId(null);
-    setBoatEditError(null);
   }, [selectedId]);
 
   useEffect(() => {
@@ -206,6 +190,28 @@ export default function TeamsPage() {
           setTeamsError(null);
         }
         setTeams(list);
+        const lbUrl = `${publicApiUrl("/leaderboard")}?tournamentId=${encodeURIComponent(selectedId)}`;
+        fetch(lbUrl, { cache: "no-store" })
+          .then(async (lbRes) => {
+            if (!lbRes.ok && demo) {
+              const lb = demoLeaderboardForTournament(selectedId);
+              const map: Record<string, number> = {};
+              for (const r of lb) map[r.teamId] = scoreForLeaderboardRow(r);
+              setScoreByTeamId(map);
+              return;
+            }
+            if (lbRes.ok) {
+              const lb = (await lbRes.json()) as {
+                teamId: string;
+                pointsOfficial: number;
+                pointsPreliminary: number;
+              }[];
+              const map: Record<string, number> = {};
+              for (const r of lb) map[r.teamId] = scoreForLeaderboardRow(r);
+              setScoreByTeamId(map);
+            }
+          })
+          .catch(() => setScoreByTeamId({}));
       } catch {
         if (!cancelled) {
           if (demo) {
@@ -233,54 +239,6 @@ export default function TeamsPage() {
     if (listRes.ok) {
       const data = (await listRes.json()) as unknown;
       setTeams(Array.isArray(data) ? (data as TeamRow[]) : []);
-    }
-  }
-
-  async function saveBoatForTeam(teamId: string) {
-    const token = typeof window !== "undefined" ? localStorage.getItem(ACCESS_TOKEN_KEY) : null;
-    if (!token) {
-      setBoatEditError("Sign in to save boat details.");
-      return;
-    }
-    const name = editBoatName.trim();
-    if (name.length < 2) {
-      setBoatEditError("Boat name must be at least 2 characters.");
-      return;
-    }
-    const reg = editBoatRegistry.trim();
-    setBoatEditPending(true);
-    setBoatEditError(null);
-    try {
-      const body: { teamId: string; name: string; registry?: string } = { teamId, name };
-      if (reg) body.registry = reg;
-      const res = await fetch(API_TEAM_BOAT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(body)
-      });
-      const raw = (await res.json().catch(() => null)) as { message?: string | string[] } | null;
-      if (res.status === 401) {
-        localStorage.removeItem(ACCESS_TOKEN_KEY);
-        refreshTokenState();
-        router.replace("/login");
-        return;
-      }
-      if (!res.ok) {
-        const msg = raw?.message;
-        const text = Array.isArray(msg) ? msg.join(" ") : msg;
-        setBoatEditError(text || `Boat save failed (${res.status}).`);
-        return;
-      }
-      toast.success("Boat details saved.");
-      setEditingBoatTeamId(null);
-      await refreshTeamsList(token, selectedId);
-    } catch {
-      setBoatEditError(`Could not reach the API at ${getPublicApiBaseUrl()}.`);
-    } finally {
-      setBoatEditPending(false);
     }
   }
 
@@ -414,7 +372,7 @@ export default function TeamsPage() {
       <PageHeader
         kicker="Fleet roster"
         title="Teams"
-        description="Choose a tournament, review registered crews, and add new teams when you are signed in as an administrator."
+        description="Official tournament team files — open any crew profile for scores, vessel details, roster, and catch activity."
         aside={
           <span
             className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
@@ -464,14 +422,39 @@ export default function TeamsPage() {
         ) : null}
 
         <div>
-          <SectionLabel className="mb-3 text-slate-500">Registration</SectionLabel>
+          <SectionLabel className="mb-3 text-slate-500">Registered teams</SectionLabel>
+          {teamsLoading ? (
+            <LoadingBlock label="Loading teams…" />
+          ) : teamsError ? (
+            <InlineNotice variant="error">{teamsError}</InlineNotice>
+          ) : !selectedId ? (
+            <p className="text-sm leading-relaxed text-slate-400">
+              Pick a tournament above to load its registered crews.
+            </p>
+          ) : teams.length === 0 ? (
+            <EmptyState
+              title="No teams yet"
+              description="Create a team for this tournament using the form below."
+            />
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {teams.map((team) => (
+                <TeamListCard
+                  key={team.id}
+                  team={team}
+                  tournamentId={selectedId}
+                  generalScore={scoreByTeamId[team.id] ?? null}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {hasToken ? (
+        <div>
+          <SectionLabel className="mb-3 text-slate-500">Admin registration</SectionLabel>
           <Card title="Add team">
-            {!hasToken ? (
-              <InlineNotice variant="info">
-                Sign in with an admin account to create teams. You can still browse the roster below.
-              </InlineNotice>
-            ) : null}
-            <form className={`${formStackClass} ${!hasToken ? "mt-4" : ""}`} onSubmit={onCreateTeam}>
+            <form className={formStackClass} onSubmit={onCreateTeam}>
               {formError ? (
                 <InlineNotice variant="error">{formError}</InlineNotice>
               ) : null}
@@ -512,7 +495,7 @@ export default function TeamsPage() {
                 />
               </FormField>
 
-              <FieldGroup title="Boat details" description="Optional — add now or edit from the roster below.">
+              <FieldGroup title="Boat details" description="Optional — add now or edit from the team profile.">
                 <FormField label="Boat name" optional>
                   <input
                     value={newBoatName}
@@ -551,106 +534,7 @@ export default function TeamsPage() {
             </form>
           </Card>
         </div>
-
-        <div>
-          <SectionLabel className="mb-3 text-slate-500">Roster</SectionLabel>
-          <Card title="Teams in this tournament">
-            {teamsLoading ? (
-              <LoadingBlock label="Loading teams…" />
-            ) : teamsError ? (
-              <InlineNotice variant="error">{teamsError}</InlineNotice>
-            ) : !selectedId ? (
-              <p className="text-sm leading-relaxed text-slate-400">
-                Pick a tournament above to load its registered crews.
-              </p>
-            ) : teams.length === 0 ? (
-              <EmptyState
-                title="No teams yet"
-                description="Create a team for this tournament using the form above."
-              />
-            ) : (
-              <ul className={`divide-y divide-white/[0.06] ${cardListShellClass}`}>
-                {teams.map((team) => (
-                  <li key={team.id} className="px-4 py-4 transition hover:bg-white/[0.02] sm:px-5 sm:py-5">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="text-base font-semibold tracking-tight text-slate-50">{team.name}</div>
-                      {hasToken ? (
-                        <button
-                          type="button"
-                          className={`${btnGhostClass} ${btnResponsiveClass} shrink-0 self-stretch text-xs sm:w-auto sm:self-start sm:text-sm`}
-                          onClick={() => {
-                            setBoatEditError(null);
-                            if (editingBoatTeamId === team.id) {
-                              setEditingBoatTeamId(null);
-                            } else {
-                              setEditingBoatTeamId(team.id);
-                              setEditBoatName(team.boat?.name ?? "");
-                              setEditBoatRegistry(team.boat?.registry ?? "");
-                            }
-                          }}
-                        >
-                          {editingBoatTeamId === team.id ? "Close" : team.boat ? "Edit boat" : "Add boat"}
-                        </button>
-                      ) : null}
-                    </div>
-                    <dl className="mt-3 grid gap-4 text-sm text-slate-300 sm:grid-cols-2">
-                      <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Captain</dt>
-                        <dd className="mt-1 leading-snug text-slate-200">{captainLabel(team)}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Boat</dt>
-                        <dd className="mt-1 leading-snug text-slate-200">{boatLabel(team)}</dd>
-                      </div>
-                    </dl>
-                    {editingBoatTeamId === team.id && hasToken ? (
-                      <form
-                        className="mt-4 grid gap-3 rounded-xl border border-white/[0.08] bg-black/25 p-4"
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          void saveBoatForTeam(team.id);
-                        }}
-                      >
-                        {boatEditError ? <InlineNotice variant="error">{boatEditError}</InlineNotice> : null}
-                        <label className="grid gap-2 text-sm">
-                          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                            Boat name
-                          </span>
-                          <input
-                            required
-                            minLength={2}
-                            value={editBoatName}
-                            onChange={(e) => setEditBoatName(e.target.value)}
-                            className={fieldInputClass}
-                            placeholder="Sea Hunter"
-                          />
-                        </label>
-                        <label className="grid gap-2 text-sm">
-                          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                            Registry / hull ID <span className="font-normal normal-case text-slate-600">(optional)</span>
-                          </span>
-                          <input
-                            value={editBoatRegistry}
-                            onChange={(e) => setEditBoatRegistry(e.target.value)}
-                            className={fieldInputClass}
-                            placeholder="e.g. documentation number"
-                          />
-                        </label>
-                        <button
-                          type="submit"
-                          disabled={boatEditPending}
-                          className={`${btnPrimaryClass} ${btnResponsiveClass}`}
-                        >
-                          {boatEditPending ? "Saving…" : "Save boat"}
-                        </button>
-                      </form>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-        </div>
+        ) : null}
       </div>
     </PageMain>
   );

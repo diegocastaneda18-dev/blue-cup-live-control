@@ -2,6 +2,10 @@ import { Card } from "@bluecup/ui";
 import { demoDashboardTournaments, isDemoModeEnabled } from "../lib/demo";
 import { getPublicApiBaseUrl, publicApiUrl } from "../lib/env";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
+
 type Tournament = {
   id: string;
   name: string;
@@ -43,7 +47,10 @@ export default async function HomePage() {
   let demoFallback = false;
 
   try {
-    const res = await fetch(API_TOURNAMENTS, { cache: "no-store" });
+    const res = await fetch(API_TOURNAMENTS, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000)
+    });
     if (!res.ok) {
       error = `Could not load tournaments (${res.status}).`;
     } else {

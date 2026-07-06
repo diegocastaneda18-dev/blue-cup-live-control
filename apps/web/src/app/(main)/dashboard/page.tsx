@@ -16,6 +16,7 @@ import {
   PageMain,
   SectionLabel
 } from "../../../components/PageChrome";
+import { CaptainQuickTile } from "../../../components/MobileAppUi";
 import { useToast } from "../../../components/Toast";
 import { demoDashboardTournaments, isDemoMode, resetDemoData } from "@bluecup/types";
 import { resultsCsvExportUrl } from "../../../lib/adminUtilities";
@@ -260,6 +261,15 @@ export default function DashboardPage() {
       <MobileQuickActions
         links={navLinksForRole(user.role).filter((link) => link.href !== "/dashboard")}
       />
+
+      {(normalizeRole(user.role) === "captain" || normalizeRole(user.role) === "team_member") && (
+        <div className="mt-4 grid grid-cols-2 gap-2 lg:hidden">
+          <CaptainQuickTile href="/catches/new" label="Log catch" sublabel="Submit from the boat" accent="gold" />
+          <CaptainQuickTile href="/catches" label="Catch history" sublabel="Status & scores" />
+          <CaptainQuickTile href="/leaderboard" label="Leaderboard" sublabel="Live standings" accent="sky" />
+          <CaptainQuickTile href="/teams" label="Team profile" sublabel="Roster & vessel" />
+        </div>
+      )}
 
       <div className={contentStackClass}>
         <div>

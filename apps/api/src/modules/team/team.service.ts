@@ -61,5 +61,37 @@ export class TeamService {
       }
     });
   }
+
+  async getTeamProfile(teamId: string) {
+    const team = await this.prisma.team.findUnique({
+      where: { id: teamId },
+      include: {
+        boat: true,
+        tournament: { select: { id: true, name: true, startsAt: true, endsAt: true, isActive: true } },
+        members: {
+          include: { user: { select: { id: true, displayName: true, email: true, role: true } } },
+          orderBy: { createdAt: "asc" }
+        },
+        jackpotEligibilities: { select: { category: true, isEligible: true, approvedAt: true } }
+      }
+    });
+    if (!team) throw new NotFoundException("Team not found");
+
+    const catches = await this.prisma.catch.findMany({
+      where: { teamId },
+      select: { status: true }
+    });
+
+    const catchStats = {
+      total: catches.length,
+      submitted: catches.filter((c) => c.status === "submitted").length,
+      pending: catches.filter((c) => c.status === "pending_review" || c.status === "more_evidence_required")
+        .length,
+      approved: catches.filter((c) => c.status === "approved" || c.status === "official").length,
+      rejected: catches.filter((c) => c.status === "rejected" || c.status === "penalized").length
+    };
+
+    return { ...team, catchStats };
+  }
 }
 

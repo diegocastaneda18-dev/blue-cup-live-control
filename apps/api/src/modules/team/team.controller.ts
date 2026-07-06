@@ -24,6 +24,11 @@ export class TeamController {
     return this.teams.getTeamDashboardByUser(user.sub);
   }
 
+  @Get(":teamId/profile")
+  async getProfile(@Param("teamId") teamId: string) {
+    return this.teams.getTeamProfile(teamId);
+  }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Post()
   @Roles("admin")

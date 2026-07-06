@@ -21,13 +21,14 @@ export function formatCatchStatusLabel(status: string): string {
 
 type CatchStatusBadgeProps = {
   status: string;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
   className?: string;
   children?: ReactNode;
 };
 
 export function CatchStatusBadge({ status, size = "sm", className = "", children }: CatchStatusBadgeProps) {
-  const sizeCls = size === "md" ? "px-3 py-1 text-sm" : "px-2.5 py-0.5 text-xs";
+  const sizeCls =
+    size === "lg" ? "px-3.5 py-1.5 text-sm" : size === "md" ? "px-3 py-1 text-sm" : "px-2.5 py-0.5 text-xs";
   return (
     <span
       className={`inline-flex items-center rounded-full border font-semibold capitalize ${sizeCls} ${catchStatusBadgeClass(status)} ${className}`.trim()}

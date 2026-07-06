@@ -1,0 +1,7 @@
+
+> @bluecup/web@0.0.1 build C:\Users\Asus Pc\Desktop\blue-cup-live-control\apps\web
+> next build
+
+   ▲ Next.js 15.5.15
+   - Environments: .env.local, .env
+

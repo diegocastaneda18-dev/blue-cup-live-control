@@ -16,7 +16,9 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  transpilePackages: ["@bluecup/types"]
+  transpilePackages: ["@bluecup/types"],
+  /** Fail fast if any route still attempts long static generation. */
+  staticPageGenerationTimeout: 120
 };
 
 export default withPWA(nextConfig);

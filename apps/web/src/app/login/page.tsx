@@ -68,10 +68,10 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-slate-950">
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-8 pb-[env(safe-area-inset-bottom)] sm:px-6">
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-6 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-8 sm:pb-[env(safe-area-inset-bottom)]">
         <LoginBrandHeader />
 
-        <p className="-mt-4 mb-8 text-center text-sm leading-relaxed text-slate-400">
+        <p className="-mt-2 mb-6 text-center text-base leading-relaxed text-slate-400 sm:mb-8 sm:text-sm">
           Log catches, check standings, and stay on the water — no laptop required.
         </p>
 
@@ -88,6 +88,7 @@ export default function LoginPage() {
               autoCapitalize="none"
               autoCorrect="off"
               inputMode="email"
+              enterKeyHint="next"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -102,6 +103,7 @@ export default function LoginPage() {
               type="password"
               name="password"
               autoComplete="current-password"
+              enterKeyHint="go"
               required
               minLength={6}
               value={password}
@@ -111,18 +113,20 @@ export default function LoginPage() {
             />
           </label>
 
-          <button
-            type="submit"
-            disabled={pending}
-            className={`${btnPrimaryClass} ${btnResponsiveClass}`}
-          >
-            {pending ? "Signing in…" : "Sign in"}
-          </button>
+          <div className="sticky bottom-[env(safe-area-inset-bottom)] -mx-1 border-t border-white/[0.06] bg-slate-950/95 pt-4 backdrop-blur-md sm:static sm:border-0 sm:bg-transparent sm:pt-0 sm:backdrop-blur-none">
+            <button
+              type="submit"
+              disabled={pending}
+              className={`${btnPrimaryClass} ${btnResponsiveClass}`}
+            >
+              {pending ? "Signing in…" : "Sign in"}
+            </button>
+          </div>
         </form>
       </Card>
       </main>
 
-      <CommercialFooter />
+      <CommercialFooter className="hidden sm:block" />
     </div>
   );
 }

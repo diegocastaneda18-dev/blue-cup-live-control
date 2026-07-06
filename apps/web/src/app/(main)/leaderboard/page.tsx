@@ -2,6 +2,7 @@
 
 import { Card } from "@bluecup/ui";
 import { useCallback, useEffect, useState } from "react";
+import { MobilePodiumStrip } from "../../../components/MobileAppUi";
 import { EmptyState } from "../../../components/EmptyState";
 import {
   BroadcastScore,
@@ -267,6 +268,10 @@ export default function LeaderboardPage() {
             ) : (
               <>
                 {ranked.length >= 3 ? (
+                  <MobilePodiumStrip entries={ranked.slice(0, 3)} />
+                ) : null}
+
+                {ranked.length >= 3 ? (
                   <div className="mb-6 hidden gap-3 md:grid md:grid-cols-3">
                     {[1, 0, 2].map((idx) => {
                       const r = ranked[idx];
@@ -298,16 +303,16 @@ export default function LeaderboardPage() {
                   {ranked.map((r) => (
                     <li
                       key={`${selectedId}-${r.rank}-${r.teamName}-mobile`}
-                      className={`flex items-center gap-3 px-4 py-4 ${r.rank <= 3 ? "bg-white/[0.02]" : ""}`}
+                      className={`flex items-center gap-3 px-4 py-5 active:bg-white/[0.03] ${r.rank <= 3 ? "bg-white/[0.02]" : ""}`}
                     >
-                      <RankEmblem rank={r.rank} size={r.rank <= 3 ? "md" : "sm"} />
+                      <RankEmblem rank={r.rank} size={r.rank <= 3 ? "lg" : "md"} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-base font-semibold text-slate-50">{r.teamName}</p>
+                        <p className="truncate text-lg font-bold text-slate-50">{r.teamName}</p>
                         <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                          Official line
+                          {r.rank === 1 ? "Tournament leader" : "Official line"}
                         </p>
                       </div>
-                      <BroadcastScore score={r.score} />
+                      <BroadcastScore score={r.score} size={r.rank <= 3 ? "lg" : "md"} />
                     </li>
                   ))}
                 </ul>
