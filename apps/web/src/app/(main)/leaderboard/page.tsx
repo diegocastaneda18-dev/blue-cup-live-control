@@ -4,6 +4,11 @@ import { Card } from "@bluecup/ui";
 import { useCallback, useEffect, useState } from "react";
 import { EmptyState } from "../../../components/EmptyState";
 import {
+  BroadcastScore,
+  PremiumPanel,
+  RankEmblem
+} from "../../../components/tournament/PremiumBoardUi";
+import {
   btnGhostClass,
   btnResponsiveClass,
   cardListShellClass,
@@ -179,17 +184,17 @@ export default function LeaderboardPage() {
   }));
 
   return (
-    <PageMain className="max-w-3xl">
+    <PageMain className="max-w-4xl">
       <PageHeader
         kicker="Live scoring"
         title="Leaderboard"
-        description="Select a tournament to see ranked teams. Standings refresh automatically every few seconds."
+        description="Official tournament standings — refreshed automatically for broadcast-ready visibility."
         aside={
           <>
-            <span className="rounded-full border border-emerald-500/35 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-200">
-              Live · 5s refresh
+            <span className="rounded-full border border-emerald-500/35 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-200">
+              Live · 5s
             </span>
-            <span className="rounded-full border border-sky-500/25 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-200">
+            <span className="rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-amber-100">
               Official line
             </span>
           </>
@@ -261,46 +266,81 @@ export default function LeaderboardPage() {
               />
             ) : (
               <>
+                {ranked.length >= 3 ? (
+                  <div className="mb-6 hidden gap-3 md:grid md:grid-cols-3">
+                    {[1, 0, 2].map((idx) => {
+                      const r = ranked[idx];
+                      if (!r) return null;
+                      const isLeader = r.rank === 1;
+                      return (
+                        <PremiumPanel
+                          key={`podium-${r.rank}`}
+                          accent="gold"
+                          className={`p-4 ${isLeader ? "md:-mt-1 md:pb-5" : "md:mt-2"}`}
+                        >
+                          <div className="flex flex-col items-center gap-3 text-center">
+                            <RankEmblem rank={r.rank} size={isLeader ? "xl" : "lg"} />
+                            <div className="min-w-0 w-full">
+                              <p className="truncate text-sm font-semibold uppercase tracking-wide text-slate-500">
+                                {r.rank === 1 ? "Leader" : r.rank === 2 ? "Runner-up" : "Third place"}
+                              </p>
+                              <p className="mt-1 truncate text-base font-semibold text-slate-50">{r.teamName}</p>
+                            </div>
+                            <BroadcastScore score={r.score} size={isLeader ? "lg" : "md"} />
+                          </div>
+                        </PremiumPanel>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
                 <ul className={`divide-y divide-white/[0.06] sm:hidden ${cardListShellClass}`}>
                   {ranked.map((r) => (
-                    <li key={`${selectedId}-${r.rank}-${r.teamName}-mobile`} className="flex items-center gap-3 px-4 py-4">
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-amber-400/30 bg-amber-500/10 text-sm font-bold tabular-nums text-amber-100">
-                        {r.rank}
-                      </span>
+                    <li
+                      key={`${selectedId}-${r.rank}-${r.teamName}-mobile`}
+                      className={`flex items-center gap-3 px-4 py-4 ${r.rank <= 3 ? "bg-white/[0.02]" : ""}`}
+                    >
+                      <RankEmblem rank={r.rank} size={r.rank <= 3 ? "md" : "sm"} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium text-slate-50">{r.teamName}</p>
-                        <p className="text-xs text-slate-500">Official line score</p>
+                        <p className="truncate text-base font-semibold text-slate-50">{r.teamName}</p>
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                          Official line
+                        </p>
                       </div>
-                      <span className="shrink-0 text-lg font-semibold tabular-nums text-slate-50">
-                        {r.score.toLocaleString(undefined, { maximumFractionDigits: 1 })}
-                      </span>
+                      <BroadcastScore score={r.score} />
                     </li>
                   ))}
                 </ul>
+
                 <div className={`hidden sm:block ${cardListShellClass}`}>
-                <table className="w-full text-left text-sm">
-                  <thead className="border-b border-white/[0.06] bg-white/[0.04] text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                    <tr>
-                      <th className="px-4 py-3.5 font-semibold text-slate-400">Rank</th>
-                      <th className="px-4 py-3.5 font-semibold text-slate-400">Team</th>
-                      <th className="px-4 py-3.5 text-right font-semibold text-slate-400">Score</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/[0.06]">
-                    {ranked.map((r) => (
-                      <tr
-                        key={`${selectedId}-${r.rank}-${r.teamName}`}
-                        className="text-slate-100 transition hover:bg-white/[0.03]"
-                      >
-                        <td className="px-4 py-3.5 font-medium tabular-nums text-amber-100/90">{r.rank}</td>
-                        <td className="px-4 py-3.5 font-medium">{r.teamName}</td>
-                        <td className="px-4 py-3.5 text-right tabular-nums font-semibold text-slate-50">
-                          {r.score.toLocaleString(undefined, { maximumFractionDigits: 1 })}
-                        </td>
+                  <table className="w-full text-left text-sm">
+                    <thead className="border-b border-white/[0.08] bg-black/30 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                      <tr>
+                        <th className="w-24 px-5 py-4">Pos</th>
+                        <th className="px-5 py-4">Team</th>
+                        <th className="px-5 py-4 text-right">Score</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-white/[0.06]">
+                      {ranked.map((r) => (
+                        <tr
+                          key={`${selectedId}-${r.rank}-${r.teamName}`}
+                          className={`transition hover:bg-white/[0.03] ${r.rank <= 3 ? "bg-gradient-to-r from-white/[0.03] to-transparent" : ""}`}
+                        >
+                          <td className="px-5 py-4">
+                            <RankEmblem rank={r.rank} size="sm" />
+                          </td>
+                          <td className="px-5 py-4">
+                            <p className="font-semibold text-slate-50">{r.teamName}</p>
+                            <p className="mt-0.5 text-[11px] uppercase tracking-wide text-slate-500">Official line</p>
+                          </td>
+                          <td className="px-5 py-4 text-right">
+                            <BroadcastScore score={r.score} size={r.rank <= 3 ? "lg" : "md"} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </>
             )}

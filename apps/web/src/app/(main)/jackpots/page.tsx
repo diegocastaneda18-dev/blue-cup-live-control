@@ -16,6 +16,14 @@ import {
   PageMain,
   SectionLabel
 } from "../../../components/PageChrome";
+import {
+  BroadcastScore,
+  MetaChip,
+  PremiumPanel,
+  RankEmblem,
+  SectionDivider,
+  StatusPill
+} from "../../../components/tournament/PremiumBoardUi";
 import { demoTournamentsList, isDemoMode } from "@bluecup/types";
 import { getPublicApiBaseUrl, publicApiUrl } from "../../../lib/env";
 
@@ -301,10 +309,10 @@ export default function JackpotsPage() {
       <PageHeader
         kicker="Daily prizes"
         title="Jackpots"
-        description="Separate from the general tournament leaderboard. Rankings use approved release scores by tournament day, filtered by Sonar or Non Sonar equipment category and admin eligibility."
+        description="Exclusive daily purse boards by equipment category — approved release scores only, admin eligibility required."
         aside={
-          <span className="rounded-full border border-amber-400/35 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-100">
-            {categoryLabel}
+          <span className="rounded-full border border-amber-400/35 bg-gradient-to-r from-amber-500/15 to-amber-600/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-amber-100">
+            {categoryLabel} purse
           </span>
         }
       />
@@ -312,29 +320,32 @@ export default function JackpotsPage() {
       <div className={contentStackClass}>
         {tournamentsError ? <InlineNotice variant="error">{tournamentsError}</InlineNotice> : null}
 
-        <div>
-          <SectionLabel className="mb-3 text-slate-500">Scope</SectionLabel>
-          <Card title="Tournament & category">
-            <div className="grid gap-4">
-              {tournamentsLoading ? (
-                <LoadingBlock label="Loading tournaments…" />
-              ) : (
-                <FormField label="Tournament">
-                  <select
-                    value={selectedTournamentId}
-                    onChange={(e) => setSelectedTournamentId(e.target.value)}
-                    className={fieldInputClass}
-                  >
-                    {tournaments.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-                </FormField>
-              )}
+        <PremiumPanel accent="gold" className="p-4 sm:p-5">
+          <SectionDivider label="Filters" />
+          <div className="mt-5 grid gap-5">
+            {tournamentsLoading ? (
+              <LoadingBlock label="Loading tournaments…" />
+            ) : (
+              <FormField label="Tournament">
+                <select
+                  value={selectedTournamentId}
+                  onChange={(e) => setSelectedTournamentId(e.target.value)}
+                  className={fieldInputClass}
+                >
+                  {tournaments.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+            )}
 
-              <div className="flex flex-wrap gap-2">
+            <div>
+              <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Equipment category
+              </p>
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-3">
                 {CATEGORY_TABS.map((tab) => {
                   const active = category === tab.id;
                   return (
@@ -342,10 +353,10 @@ export default function JackpotsPage() {
                       key={tab.id}
                       type="button"
                       onClick={() => setCategory(tab.id)}
-                      className={`min-h-10 rounded-xl px-4 text-sm font-semibold transition ${
+                      className={`min-h-12 flex-1 rounded-xl px-4 text-sm font-bold transition sm:min-w-[9rem] ${
                         active
-                          ? "bg-amber-500/90 text-slate-950 shadow-md shadow-amber-950/30"
-                          : "border border-white/[0.12] bg-white/[0.04] text-slate-100 hover:border-sky-500/25 hover:bg-sky-500/10"
+                          ? "bg-gradient-to-br from-amber-400 to-amber-500 text-slate-950 shadow-lg shadow-amber-950/40 ring-1 ring-amber-300/50"
+                          : "border border-white/[0.12] bg-black/20 text-slate-200 hover:border-amber-400/25 hover:bg-amber-500/10"
                       }`}
                     >
                       {tab.label}
@@ -353,28 +364,28 @@ export default function JackpotsPage() {
                   );
                 })}
               </div>
-
-              <FormField label="Tournament day">
-                <select
-                  value={selectedDay}
-                  onChange={(e) => setSelectedDay(e.target.value)}
-                  className={fieldInputClass}
-                  disabled={days.length === 0}
-                >
-                  {days.length === 0 ? <option value="">No approved release days yet</option> : null}
-                  {days.map((day) => (
-                    <option key={day} value={day}>
-                      {formatDayLabel(day)}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
             </div>
-          </Card>
-        </div>
+
+            <FormField label="Competition day">
+              <select
+                value={selectedDay}
+                onChange={(e) => setSelectedDay(e.target.value)}
+                className={`${fieldInputClass} font-medium`}
+                disabled={days.length === 0}
+              >
+                {days.length === 0 ? <option value="">No approved release days yet</option> : null}
+                {days.map((day) => (
+                  <option key={day} value={day}>
+                    {formatDayLabel(day)}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+          </div>
+        </PremiumPanel>
 
         <div>
-          <SectionLabel className="mb-3 text-slate-500">Daily jackpot tiers</SectionLabel>
+          <SectionLabel className="mb-3 text-slate-500">Prize tiers</SectionLabel>
           {boardError ? <InlineNotice variant="error">{boardError}</InlineNotice> : null}
           {boardLoading ? (
             <LoadingBlock label="Loading jackpot standings…" />
@@ -386,50 +397,62 @@ export default function JackpotsPage() {
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {board.tiers.map((tier) => (
-                <Card
-                  key={tier.tierId}
-                  title={tier.name}
-                  right={
-                    <span className="rounded-full border border-amber-400/30 bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-100">
-                      {formatUsd(tier.amountUsd)}
-                    </span>
-                  }
-                >
-                  {tier.entry ? (
-                    <dl className="grid gap-3 text-sm">
+              {board.tiers.map((tier) => {
+                const isTop = tier.sortOrder === 1;
+                return (
+                  <PremiumPanel
+                    key={tier.tierId}
+                    accent="gold"
+                    className={`flex flex-col p-5 ${isTop ? "ring-1 ring-amber-400/25 md:col-span-2 xl:col-span-1" : ""}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
                       <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Rank</dt>
-                        <dd className="mt-1 text-slate-100">#{tier.entry.rank}</dd>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Tier {tier.sortOrder}
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-slate-300">{tier.name}</p>
                       </div>
-                      <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Team</dt>
-                        <dd className="mt-1 font-medium text-slate-50">{tier.entry.teamName}</dd>
+                      <span className="shrink-0 rounded-xl border border-amber-400/35 bg-gradient-to-br from-amber-500/20 to-amber-600/5 px-3 py-2 text-lg font-bold tabular-nums text-amber-100">
+                        {formatUsd(tier.amountUsd)}
+                      </span>
+                    </div>
+
+                    {tier.entry ? (
+                      <div className="mt-5 flex flex-1 flex-col gap-4 border-t border-white/[0.06] pt-5">
+                        <div className="flex items-center gap-3">
+                          <RankEmblem rank={tier.entry.rank} size={isTop ? "lg" : "md"} />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                              Current leader
+                            </p>
+                            <p className="truncate text-lg font-bold text-slate-50">{tier.entry.teamName}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-end justify-between gap-3">
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                              Release score
+                            </p>
+                            <BroadcastScore score={tier.entry.releaseScore} size={isTop ? "lg" : "md"} />
+                          </div>
+                          <StatusPill tone="success">Eligible</StatusPill>
+                        </div>
                       </div>
-                      <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                          Approved release score
-                        </dt>
-                        <dd className="mt-1 text-amber-100/90">
-                          {tier.entry.releaseScore.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Eligibility</dt>
-                        <dd className="mt-1 text-emerald-200">Admin approved</dd>
-                      </div>
-                    </dl>
-                  ) : (
-                    <p className="text-sm text-slate-500">No eligible team yet for this tier on the selected day.</p>
-                  )}
-                </Card>
-              ))}
+                    ) : (
+                      <p className="mt-5 border-t border-white/[0.06] pt-5 text-sm leading-relaxed text-slate-500">
+                        No eligible team yet for this tier on the selected day.
+                      </p>
+                    )}
+                  </PremiumPanel>
+                );
+              })}
             </div>
           )}
         </div>
 
         <div>
-          <SectionLabel className="mb-3 text-slate-500">Daily standings</SectionLabel>
+          <SectionDivider label="Daily standings" />
+          <div className="mt-5">
           <Card title={`${categoryLabel} · ${selectedDay ? formatDayLabel(selectedDay) : "—"}`}>
             {!board || board.standings.length === 0 ? (
               <p className="text-sm text-slate-500">
@@ -438,27 +461,40 @@ export default function JackpotsPage() {
             ) : (
               <div className={`overflow-x-auto ${cardListShellClass}`}>
                 <table className="min-w-full text-left text-sm">
-                  <thead className="border-b border-white/[0.08] bg-black/20 text-[11px] uppercase tracking-wide text-slate-500">
+                  <thead className="border-b border-white/[0.08] bg-black/30 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                     <tr>
-                      <th className="px-4 py-3 font-semibold">Rank</th>
-                      <th className="px-4 py-3 font-semibold">Team</th>
-                      <th className="px-4 py-3 font-semibold">Day</th>
-                      <th className="px-4 py-3 font-semibold">Category</th>
-                      <th className="px-4 py-3 font-semibold">Release score</th>
-                      <th className="px-4 py-3 font-semibold">Eligibility</th>
+                      <th className="px-5 py-4">Rank</th>
+                      <th className="px-5 py-4">Team</th>
+                      <th className="hidden px-5 py-4 md:table-cell">Day</th>
+                      <th className="hidden px-5 py-4 lg:table-cell">Category</th>
+                      <th className="px-5 py-4 text-right">Release score</th>
+                      <th className="px-5 py-4">Status</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-white/[0.06]">
                     {board.standings.map((row) => (
-                      <tr key={row.teamId} className="border-b border-white/[0.06]">
-                        <td className="px-4 py-3 font-mono text-amber-100/90">#{row.rank}</td>
-                        <td className="px-4 py-3 font-medium text-slate-50">{row.teamName}</td>
-                        <td className="px-4 py-3 text-slate-300">{formatDayLabel(row.day)}</td>
-                        <td className="px-4 py-3 capitalize text-slate-300">{row.category.replace(/_/g, " ")}</td>
-                        <td className="px-4 py-3 text-amber-100/90">
-                          {row.releaseScore.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      <tr
+                        key={row.teamId}
+                        className={`transition hover:bg-white/[0.03] ${row.rank <= 3 ? "bg-white/[0.02]" : ""}`}
+                      >
+                        <td className="px-5 py-4">
+                          <RankEmblem rank={row.rank} size="sm" />
                         </td>
-                        <td className="px-4 py-3 text-emerald-200">Approved</td>
+                        <td className="px-5 py-4 font-semibold text-slate-50">{row.teamName}</td>
+                        <td className="hidden px-5 py-4 text-slate-400 md:table-cell">
+                          {formatDayLabel(row.day)}
+                        </td>
+                        <td className="hidden px-5 py-4 capitalize text-slate-400 lg:table-cell">
+                          {row.category.replace(/_/g, " ")}
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <BroadcastScore score={row.releaseScore} size={row.rank === 1 ? "md" : "md"} />
+                        </td>
+                        <td className="px-5 py-4">
+                          <StatusPill tone={row.isEligible ? "success" : "neutral"}>
+                            {row.isEligible ? "Eligible" : "Pending"}
+                          </StatusPill>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -466,12 +502,15 @@ export default function JackpotsPage() {
               </div>
             )}
           </Card>
+          </div>
         </div>
 
         {isAdmin ? (
           <div>
-            <SectionLabel className="mb-3 text-slate-500">Admin controls</SectionLabel>
-            <Card title="Jackpot eligibility">
+            <SectionDivider label="Admin controls" />
+            <div className="mt-5">
+            <PremiumPanel accent="sky" className="p-4 sm:p-5">
+            <h3 className="text-base font-semibold text-slate-50">Jackpot eligibility</h3>
               <p className="mb-4 text-sm leading-relaxed text-slate-400">
                 Committee approves catches; only admins control which teams appear on jackpot leaderboards. Assign
                 equipment category (Sonar / Non Sonar) before approving eligibility.
@@ -487,17 +526,22 @@ export default function JackpotsPage() {
               ) : eligibility.length === 0 ? (
                 <p className="text-sm text-slate-500">No teams in this category yet.</p>
               ) : (
-                <ul className={`divide-y divide-white/[0.06] ${cardListShellClass}`}>
+                <ul className="mt-4 divide-y divide-white/[0.06] rounded-xl border border-white/[0.08] bg-black/20">
                   {eligibility.map((row) => (
-                    <li key={row.teamId} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="font-medium text-slate-50">{row.teamName}</p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          Equipment: {row.usesSonar ? "Sonar" : "Non Sonar"} · Eligible:{" "}
-                          {row.isEligible ? "Yes" : "No"}
-                        </p>
+                    <li
+                      key={row.teamId}
+                      className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-slate-50">{row.teamName}</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <MetaChip>{row.usesSonar ? "Sonar" : "Non Sonar"}</MetaChip>
+                          <StatusPill tone={row.isEligible ? "success" : "warning"}>
+                            {row.isEligible ? "Jackpot eligible" : "Not eligible"}
+                          </StatusPill>
+                        </div>
                       </div>
-                      <div className="flex flex-col gap-2 sm:flex-row">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:shrink-0">
                         <button
                           type="button"
                           className={`${btnGhostClass} ${btnResponsiveClass} text-xs`}
@@ -517,7 +561,8 @@ export default function JackpotsPage() {
                   ))}
                 </ul>
               )}
-            </Card>
+            </PremiumPanel>
+            </div>
           </div>
         ) : null}
       </div>

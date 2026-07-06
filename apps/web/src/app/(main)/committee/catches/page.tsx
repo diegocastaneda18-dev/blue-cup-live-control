@@ -4,6 +4,12 @@ import { Card } from "@bluecup/ui";
 import { CatchStatusBadge } from "../../../../components/CatchStatusBadge";
 import { EmptyState } from "../../../../components/EmptyState";
 import {
+  MetaChip,
+  PremiumPanel,
+  SectionDivider,
+  StatusPill
+} from "../../../../components/tournament/PremiumBoardUi";
+import {
   btnGhostClass,
   btnResponsiveClass,
   contentStackClass,
@@ -314,11 +320,16 @@ export default function CommitteeCatchesPage() {
       <PageHeader
         kicker="Committee ops"
         title="Catch review"
-        description="Work the pending queue for the selected tournament. Decisions propagate to the live leaderboard and the team-facing history."
+        description="Professional validation desk — review evidence, record decisions, and push outcomes to the live leaderboard."
         aside={
-          <span className="rounded-full border border-violet-400/30 bg-violet-500/10 px-3 py-1.5 text-xs font-medium text-violet-100">
-            Committee lane
-          </span>
+          <>
+            <StatusPill tone="neutral">Committee lane</StatusPill>
+            {!pendingLoading && pending.length > 0 ? (
+              <span className="rounded-full border border-amber-400/35 bg-amber-500/10 px-3 py-1.5 text-xs font-bold tabular-nums text-amber-100">
+                {pending.length} pending
+              </span>
+            ) : null}
+          </>
         }
       />
 
@@ -377,37 +388,50 @@ export default function CommitteeCatchesPage() {
             />
           ) : (
             <div className="grid gap-5 sm:gap-6">
-              {pending.map((c) => (
-                <Card key={c.id} title={`Catch ${c.id.slice(0, 8)}…`}>
-                  <div className="grid gap-4 text-sm text-slate-200">
-                    <dl className="grid gap-3 sm:grid-cols-2">
+              {pending.map((c, index) => (
+                <PremiumPanel key={c.id} accent="violet" className="overflow-hidden">
+                  <div className="border-b border-white/[0.06] bg-black/20 px-4 py-4 sm:px-5 sm:py-5">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-300/80">
+                          Review item #{index + 1}
+                        </p>
+                        <h3 className="mt-1 truncate text-xl font-bold tracking-tight text-slate-50">{c.team.name}</h3>
+                        <p className="mt-1 font-mono text-xs text-slate-500">ID {c.id.slice(0, 8)}…</p>
+                      </div>
+                      <CatchStatusBadge status={c.status} />
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <MetaChip>{c.type.replace(/_/g, " ")}</MetaChip>
+                      <MetaChip>{c.category.name}</MetaChip>
+                      {c.species ? <MetaChip>{c.species.name}</MetaChip> : null}
+                      {c.weightKg != null ? <MetaChip>{c.weightKg} kg</MetaChip> : null}
+                      {c.lengthCm != null ? <MetaChip>{c.lengthCm} cm</MetaChip> : null}
+                      <MetaChip>
+                        {c.media.length} media file{c.media.length === 1 ? "" : "s"}
+                      </MetaChip>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-5 px-4 py-5 sm:px-5">
+                    <dl className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Submitted</dt>
+                        <dd className="mt-1 text-sm font-medium text-slate-200">
+                          {new Date(c.createdAt).toLocaleString()}
+                        </dd>
+                      </div>
                       <div className="sm:col-span-2">
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Team</dt>
-                        <dd className="mt-1 text-base font-semibold tracking-tight text-slate-50">{c.team.name}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Type</dt>
-                        <dd className="mt-1 capitalize text-slate-200">{c.type.replace(/_/g, " ")}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Created</dt>
-                        <dd className="mt-1 text-slate-300">{new Date(c.createdAt).toLocaleString()}</dd>
-                      </div>
-                      <div className="sm:col-span-2">
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Angler notes</dt>
-                        <dd className="mt-1 leading-relaxed text-slate-300">{c.notes?.trim() ? c.notes : "—"}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                          Current status
-                        </dt>
-                        <dd className="mt-1">
-                          <CatchStatusBadge status={c.status} />
+                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Angler notes</dt>
+                        <dd className="mt-1 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2.5 text-sm leading-relaxed text-slate-300">
+                          {c.notes?.trim() ? c.notes : "—"}
                         </dd>
                       </div>
                     </dl>
 
-                    <FieldGroup title="Committee decision">
+                    <SectionDivider label="Committee decision" />
+
+                    <FieldGroup title="Review inputs">
                       <FormField label="Review notes" optional hint="Saved to the audit trail.">
                         <textarea
                           rows={3}
@@ -434,35 +458,39 @@ export default function CommitteeCatchesPage() {
                       </FormField>
                     </FieldGroup>
 
-                    <div className="grid grid-cols-2 gap-2 border-t border-white/[0.06] pt-4 sm:flex sm:flex-wrap">
-                      {(
-                        [
-                          ["approve", "Approve"],
-                          ["reject", "Reject"],
-                          ["request_more_evidence", "More evidence"],
-                          ["penalize", "Penalize"]
-                        ] as const
-                      ).map(([action, label]) => (
-                        <button
-                          key={action}
-                          type="button"
-                          disabled={actingId === c.id}
-                          onClick={() => void submitReview(c.id, action)}
-                          className={
-                            action === "approve"
-                              ? `min-h-11 rounded-xl bg-emerald-600/90 px-3 py-2.5 text-xs font-semibold text-white shadow-md shadow-emerald-950/30 hover:bg-emerald-500 disabled:opacity-50 sm:px-4 sm:text-sm ${btnResponsiveClass}`
-                              : action === "reject"
-                                ? `min-h-11 rounded-xl border border-red-400/40 bg-red-500/15 px-3 py-2.5 text-xs font-semibold text-red-100 hover:bg-red-500/25 disabled:opacity-50 sm:px-4 sm:text-sm ${btnResponsiveClass}`
-                                : `min-h-11 rounded-xl border border-white/[0.12] bg-white/[0.04] px-3 py-2.5 text-xs font-semibold text-slate-100 hover:border-sky-500/25 hover:bg-sky-500/10 disabled:opacity-50 sm:px-4 sm:text-sm ${btnResponsiveClass}`
-                          }
-                        >
-                          {actingId === c.id ? "Working…" : label}
-                        </button>
-                      ))}
+                    <div className="rounded-xl border border-white/[0.08] bg-black/25 p-3 sm:p-4">
+                      <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                        Record decision
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                        {(
+                          [
+                            ["approve", "Approve"],
+                            ["reject", "Reject"],
+                            ["request_more_evidence", "More evidence"],
+                            ["penalize", "Penalize"]
+                          ] as const
+                        ).map(([action, label]) => (
+                          <button
+                            key={action}
+                            type="button"
+                            disabled={actingId === c.id}
+                            onClick={() => void submitReview(c.id, action)}
+                            className={
+                              action === "approve"
+                                ? `min-h-11 flex-1 rounded-xl bg-emerald-600 px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-white shadow-lg shadow-emerald-950/30 hover:bg-emerald-500 disabled:opacity-50 sm:min-w-[8.5rem] sm:px-4 sm:text-sm ${btnResponsiveClass}`
+                                : action === "reject"
+                                  ? `min-h-11 flex-1 rounded-xl border border-red-400/45 bg-red-500/15 px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-red-100 hover:bg-red-500/25 disabled:opacity-50 sm:min-w-[8.5rem] sm:px-4 sm:text-sm ${btnResponsiveClass}`
+                                  : `min-h-11 flex-1 rounded-xl border border-white/[0.12] bg-white/[0.04] px-3 py-2.5 text-xs font-semibold text-slate-100 hover:border-sky-500/25 hover:bg-sky-500/10 disabled:opacity-50 sm:min-w-[8.5rem] sm:px-4 sm:text-sm ${btnResponsiveClass}`
+                            }
+                          >
+                            {actingId === c.id ? "Working…" : label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-
                   </div>
-                </Card>
+                </PremiumPanel>
               ))}
             </div>
           )}
