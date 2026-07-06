@@ -8,6 +8,8 @@ import {
   formStackClass,
   InlineNotice
 } from "../../components/PageChrome";
+import { CommercialFooter } from "../../components/CommercialFooter";
+import { LoginBrandHeader } from "../../components/PremiumAppHeader";
 import { getPublicApiBaseUrl } from "../../lib/env";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -65,16 +67,15 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-[100dvh] max-w-md flex-col justify-center px-4 py-8 pb-[env(safe-area-inset-bottom)] sm:px-6">
-      <div className="mb-8 text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-400/90">Las Marías Blue Cup</p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">Sign in</h1>
-        <p className="mt-2 text-sm leading-relaxed text-slate-400">
+    <div className="flex min-h-[100dvh] flex-col bg-slate-950">
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-8 pb-[env(safe-area-inset-bottom)] sm:px-6">
+        <LoginBrandHeader />
+
+        <p className="-mt-4 mb-8 text-center text-sm leading-relaxed text-slate-400">
           Log catches, check standings, and stay on the water — no laptop required.
         </p>
-      </div>
 
-      <Card title="Your account">
+        <Card title="Your account">
         <form className={formStackClass} onSubmit={onSubmit}>
           {error ? <InlineNotice variant="error">{error}</InlineNotice> : null}
 
@@ -119,6 +120,9 @@ export default function LoginPage() {
           </button>
         </form>
       </Card>
-    </main>
+      </main>
+
+      <CommercialFooter />
+    </div>
   );
 }
