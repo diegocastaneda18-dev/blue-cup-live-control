@@ -22,3 +22,5 @@ packages/types/src/*.js
 packages/types/src/*.js.map
 packages/types/src/*.d.ts
 apps/api/uploads/
+web-build-log.txt
+web-build-log-3.txt
