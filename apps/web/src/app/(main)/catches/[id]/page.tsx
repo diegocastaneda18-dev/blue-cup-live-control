@@ -3,7 +3,7 @@
 import { Card } from "@bluecup/ui";
 import { CatchStatusBadge } from "../../../../components/CatchStatusBadge";
 import { MobileScoreHero } from "../../../../components/MobileAppUi";
-import { MediaUploadStatusBadge, UploadProgressBar } from "../../../../components/MediaUploadStatus";
+import { CatchMediaAvailabilityBadge, UploadProgressBar } from "../../../../components/MediaUploadStatus";
 import { retryMediaFile, userFacingUploadMessage, type MediaUploadStatus, type UploadProgress } from "../../../../lib/mediaUpload";
 import {
   btnGhostClass,
@@ -16,6 +16,7 @@ import {
   PageMain,
   SectionLabel
 } from "../../../../components/PageChrome";
+import { resolveCatchMediaView, type CatchMediaViewFields } from "../../../../lib/catchMediaUrl";
 import { demoCatchDetailById, isDemoMode } from "@bluecup/types";
 import { publicApiUrl } from "../../../../lib/env";
 import { normalizeRole } from "../../../../lib/rbac";
@@ -72,14 +73,13 @@ type CatchDetail = {
   scoreOfficial: number | null;
   category?: { name: string; code: string } | null;
   species?: { name: string; code: string } | null;
-  media?: {
+  media?: (CatchMediaViewFields & {
     id: string;
     type: string;
-    url: string;
     objectKey: string;
     uploadStatus?: MediaUploadStatus;
     errorMessage?: string | null;
-  }[];
+  })[];
   reviews?: ReviewRow[];
 };
 
@@ -289,21 +289,21 @@ export default function CatchDetailPage() {
                 {data.media && data.media.length > 0 ? (
                   <ul className="grid gap-3">
                     {data.media.map((m) => {
-                      const ready = (m.uploadStatus ?? "ready") === "ready";
+                      const mediaView = resolveCatchMediaView(m);
                       return (
                         <li key={m.id} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold capitalize text-amber-100">
                               {m.type}
                             </span>
-                            <MediaUploadStatusBadge status={m.uploadStatus} />
+                            <CatchMediaAvailabilityBadge media={m} />
                           </div>
-                          {m.errorMessage ? (
+                          {m.errorMessage && mediaView.status === "reupload_required" ? (
                             <p className="mt-2 text-xs text-red-200/90">{m.errorMessage}</p>
                           ) : null}
-                          {ready ? (
+                          {mediaView.showLink && mediaView.href ? (
                             <a
-                              href={m.url}
+                              href={mediaView.href}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="mt-3 flex min-h-11 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm font-medium text-sky-300"
@@ -311,13 +311,15 @@ export default function CatchDetailPage() {
                               <span className="truncate">{m.objectKey || "Open media"}</span>
                               <span className="text-xs text-slate-500">Open →</span>
                             </a>
-                          ) : (
+                          ) : mediaView.message ? (
+                            <p className="mt-3 text-sm text-amber-200/90">{mediaView.message}</p>
+                          ) : mediaView.status === "uploading" || mediaView.status === "processing" ? (
                             <p className="mt-3 text-sm text-slate-400">
-                              {(m.uploadStatus ?? "ready") === "uploading" || m.uploadStatus === "processing"
-                                ? "Evidence is still uploading or processing."
-                                : "Evidence is not ready yet."}
+                              {mediaView.status === "uploading"
+                                ? "Evidence is still uploading."
+                                : "Evidence is still processing."}
                             </p>
-                          )}
+                          ) : null}
                           {m.uploadStatus === "failed" ? (
                             <label className="mt-3 inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-100">
                               {retryingMediaId === m.id ? "Retrying…" : "Retry upload"}

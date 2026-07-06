@@ -1,14 +1,17 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../../infra/prisma/prisma.service";
+import { ObjectStorageService } from "../../infra/storage/object-storage.service";
 import { AuditService } from "../audit/audit.service";
 import { LeaderboardGateway } from "../leaderboard/leaderboard.gateway";
+import { resolveCatchMediaList, type CatchMediaLike } from "./media-url.helper";
 
 @Injectable()
 export class CatchService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly leaderboard: LeaderboardGateway
+    private readonly leaderboard: LeaderboardGateway,
+    private readonly storage: ObjectStorageService
   ) {}
 
   private async assertUserCanAccessCatch(params: { userId: string; catchId: string; allowCommittee: boolean }) {
@@ -122,15 +125,26 @@ export class CatchService {
     };
   }
 
+  private async withResolvedMedia<T extends { media?: CatchMediaLike[] }>(row: T): Promise<T> {
+    if (!row.media?.length) return row;
+    const media = await resolveCatchMediaList(this.storage, row.media);
+    return { ...row, media };
+  }
+
+  private async withResolvedMediaList<T extends { media?: CatchMediaLike[] }>(rows: T[]): Promise<T[]> {
+    return Promise.all(rows.map((row) => this.withResolvedMedia(row)));
+  }
+
   async myCatchHistory(userId: string) {
     const membership = await this.prisma.teamMember.findFirst({ where: { userId } });
     if (!membership) throw new NotFoundException("No team membership");
-    return this.prisma.catch.findMany({
+    const rows = await this.prisma.catch.findMany({
       where: { teamId: membership.teamId },
       include: this.catchDetailInclude(),
       orderBy: { createdAt: "desc" },
       take: 50
     });
+    return this.withResolvedMediaList(rows);
   }
 
   async getCatchForTeamMember(userId: string, catchId: string) {
@@ -141,7 +155,7 @@ export class CatchService {
       include: this.catchDetailInclude()
     });
     if (!c) throw new NotFoundException("Catch not found");
-    return c;
+    return this.withResolvedMedia(c);
   }
 
   async getCatchForCommittee(catchId: string) {
@@ -150,26 +164,28 @@ export class CatchService {
       include: this.catchDetailInclude()
     });
     if (!c) throw new NotFoundException("Catch not found");
-    return c;
+    return this.withResolvedMedia(c);
   }
 
   async listPendingForCommittee(tournamentId: string) {
-    return this.prisma.catch.findMany({
+    const rows = await this.prisma.catch.findMany({
       where: { tournamentId, status: { in: ["pending_review", "more_evidence_required"] } },
       include: { team: true, category: true, species: true, media: true },
       orderBy: { createdAt: "asc" },
       take: 100
     });
+    return this.withResolvedMediaList(rows);
   }
 
   async listCatchHistoryForTournament(tournamentId: string) {
     if (!tournamentId.trim()) return [];
-    return this.prisma.catch.findMany({
+    const rows = await this.prisma.catch.findMany({
       where: { tournamentId },
       include: this.catchDetailInclude(),
       orderBy: { createdAt: "desc" },
       take: 100
     });
+    return this.withResolvedMediaList(rows);
   }
 
   async reviewCatch(params: {

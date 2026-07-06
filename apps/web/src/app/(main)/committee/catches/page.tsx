@@ -2,7 +2,8 @@
 
 import { Card } from "@bluecup/ui";
 import { CatchStatusBadge } from "../../../../components/CatchStatusBadge";
-import { MediaUploadStatusBadge } from "../../../../components/MediaUploadStatus";
+import { CatchMediaAvailabilityBadge } from "../../../../components/MediaUploadStatus";
+import { resolveCatchMediaView, type CatchMediaViewFields } from "../../../../lib/catchMediaUrl";
 import { EmptyState } from "../../../../components/EmptyState";
 import {
   MetaChip,
@@ -52,7 +53,7 @@ type PendingCatch = {
   team: { id: string; name: string };
   category: { name: string; code: string };
   species?: { name: string; code: string } | null;
-  media: { id: string; type?: string; uploadStatus?: string; url?: string }[];
+  media: (CatchMediaViewFields & { id: string; type?: string; uploadStatus?: string; objectKey?: string })[];
 };
 
 type ReviewAction = "approve" | "reject" | "request_more_evidence" | "penalize";
@@ -409,21 +410,38 @@ export default function CommitteeCatchesPage() {
                       {c.weightKg != null ? <MetaChip>{c.weightKg} kg</MetaChip> : null}
                       {c.lengthCm != null ? <MetaChip>{c.lengthCm} cm</MetaChip> : null}
                       <MetaChip>
-                        {c.media.filter((m) => (m.uploadStatus ?? "ready") === "ready").length}/{c.media.length}{" "}
+                        {c.media.filter((m) => resolveCatchMediaView(m).status === "ready").length}/{c.media.length}{" "}
                         evidence ready
                       </MetaChip>
                     </div>
                     {c.media.length > 0 ? (
                       <ul className="mt-4 space-y-2">
-                        {c.media.map((m) => (
+                        {c.media.map((m) => {
+                          const mediaView = resolveCatchMediaView(m);
+                          return (
                           <li
                             key={m.id}
-                            className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2"
+                            className="flex flex-col gap-2 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2"
                           >
-                            <span className="text-sm capitalize text-slate-200">{m.type ?? "media"}</span>
-                            <MediaUploadStatusBadge status={m.uploadStatus as "uploading" | "processing" | "ready" | "failed" | undefined} />
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="text-sm capitalize text-slate-200">{m.type ?? "media"}</span>
+                              <CatchMediaAvailabilityBadge media={m} />
+                            </div>
+                            {mediaView.showLink && mediaView.href ? (
+                              <a
+                                href={mediaView.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="truncate text-xs font-medium text-sky-300"
+                              >
+                                Open evidence →
+                              </a>
+                            ) : mediaView.message ? (
+                              <p className="text-xs text-amber-200/90">{mediaView.message}</p>
+                            ) : null}
                           </li>
-                        ))}
+                          );
+                        })}
                       </ul>
                     ) : null}
                   </div>

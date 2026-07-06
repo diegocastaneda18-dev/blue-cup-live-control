@@ -14,7 +14,7 @@ import {
   SectionLabel
 } from "../../../components/PageChrome";
 import { CatchHistoryCard } from "../../../components/MobileAppUi";
-import { summarizeCatchMedia } from "../../../lib/mediaUpload";
+import { summarizeMediaAvailability, type CatchMediaViewFields } from "../../../lib/catchMediaUrl";
 import Link from "next/link";
 import { demoCatchHistoryRows, demoTournamentsList, isDemoMode } from "@bluecup/types";
 import { getPublicApiBaseUrl, publicApiUrl } from "../../../lib/env";
@@ -47,7 +47,7 @@ type CatchRow = {
   scoreOfficial?: number | null;
   category?: { name: string; code: string } | null;
   species?: { name: string; code: string } | null;
-  media?: {
+  media?: CatchMediaViewFields & {
     id: string;
     type: string;
     url: string;
@@ -121,9 +121,12 @@ function formatWhen(iso: string) {
 function mediaSummaryLine(c: CatchRow): string | null {
   const media = c.media ?? [];
   if (media.length === 0) return null;
-  const stats = summarizeCatchMedia(media);
+  const stats = summarizeMediaAvailability(media);
+  if (stats.unavailable > 0) {
+    return `${stats.ready} ready · ${stats.unavailable} unavailable`;
+  }
   if (stats.pending > 0) return `${stats.ready} ready · ${stats.pending} processing`;
-  if (stats.failed > 0) return `${stats.ready} ready · ${stats.failed} failed`;
+  if (stats.failed > 0) return `${stats.ready} ready · ${stats.failed} need re-upload`;
   return `${media.length} media ready`;
 }
 

@@ -1,5 +1,12 @@
 import type { MediaUploadStatus } from "../lib/mediaUpload";
 import { mediaStatusLabel, mediaStatusTone } from "../lib/mediaUpload";
+import {
+  inferMediaAvailabilityStatus,
+  mediaAvailabilityLabel,
+  mediaAvailabilityTone,
+  type CatchMediaViewFields,
+  type MediaAvailabilityStatus
+} from "../lib/catchMediaUrl";
 
 export function MediaUploadStatusBadge({
   status,
@@ -23,6 +30,33 @@ export function MediaUploadStatusBadge({
       className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${toneClass} ${className}`.trim()}
     >
       {mediaStatusLabel(status)}
+    </span>
+  );
+}
+
+export function CatchMediaAvailabilityBadge({
+  media,
+  className = ""
+}: {
+  media: CatchMediaViewFields;
+  className?: string;
+}) {
+  const status: MediaAvailabilityStatus = inferMediaAvailabilityStatus(media);
+  const tone = mediaAvailabilityTone(status);
+  const toneClass =
+    tone === "success"
+      ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-100"
+      : tone === "warning"
+        ? "border-amber-400/40 bg-amber-500/15 text-amber-100"
+        : tone === "error"
+          ? "border-red-400/40 bg-red-500/15 text-red-100"
+          : "border-white/15 bg-white/5 text-slate-300";
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${toneClass} ${className}`.trim()}
+    >
+      {mediaAvailabilityLabel(status)}
     </span>
   );
 }
