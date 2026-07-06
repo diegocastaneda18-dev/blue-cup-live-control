@@ -33,7 +33,7 @@ function TournamentLogoMark({ variant = "header" }: { variant?: "header" | "logi
       className={imageClass}
       fallback={
         <div
-          className={`flex items-center justify-center rounded-lg border border-amber-400/25 bg-gradient-to-br from-amber-500/15 to-sky-500/10 ${fallbackClass}`}
+          className={`flex shrink-0 items-center justify-center rounded-lg border border-amber-400/25 bg-gradient-to-br from-amber-500/15 to-sky-500/10 ${fallbackClass}`}
         >
           <span className="text-xs font-bold tracking-[0.18em] text-amber-100 sm:text-sm">LMBC</span>
         </div>
@@ -42,75 +42,124 @@ function TournamentLogoMark({ variant = "header" }: { variant?: "header" | "logi
   );
 }
 
+function UserAccountStrip({
+  user,
+  onLogout,
+  compact = false
+}: {
+  user: { email: string; role: string };
+  onLogout: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <div className={`flex shrink-0 items-center ${compact ? "gap-2" : "gap-2.5 sm:gap-3"}`}>
+      {!compact ? (
+        <div className="hidden min-w-0 items-center gap-2 rounded-lg border border-white/10 bg-black/25 px-2.5 py-1.5 lg:flex xl:px-3 xl:py-2">
+          <span
+            className="max-w-[7.5rem] truncate text-xs font-medium text-slate-100 xl:max-w-[10rem]"
+            title={user.email}
+          >
+            {user.email}
+          </span>
+          <span className="h-3 w-px shrink-0 bg-white/10" aria-hidden />
+          <span className="shrink-0 rounded-full border border-amber-400/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold capitalize tracking-wide text-amber-100/90">
+            {user.role.replace(/_/g, " ")}
+          </span>
+        </div>
+      ) : null}
+
+      {compact ? (
+        <span className="max-w-[5.5rem] truncate rounded-full border border-amber-400/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold capitalize tracking-wide text-amber-100/90">
+          {user.role.replace(/_/g, " ")}
+        </span>
+      ) : (
+        <span className="shrink-0 rounded-full border border-amber-400/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold capitalize tracking-wide text-amber-100/90 lg:hidden">
+          {user.role.replace(/_/g, " ")}
+        </span>
+      )}
+
+      <button
+        type="button"
+        onClick={onLogout}
+        className="shrink-0 rounded-lg border border-white/15 bg-white/[0.04] px-3 py-2 text-sm font-medium text-slate-200 transition hover:border-white/20 hover:bg-white/10 lg:min-h-9 lg:px-3 lg:py-1.5 lg:text-[13px]"
+      >
+        Log out
+      </button>
+    </div>
+  );
+}
+
+function DesktopNav({
+  navLinks,
+  pathname
+}: {
+  navLinks: NavLink[];
+  pathname: string;
+}) {
+  return (
+    <nav
+      className="hidden min-w-0 lg:flex lg:flex-wrap lg:items-center lg:justify-center lg:gap-1 lg:px-2 lg:py-2.5"
+      aria-label="Primary navigation"
+    >
+      {navLinks.map(({ href, label }) => {
+        const active = pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
+        return (
+          <Link
+            key={href}
+            href={href}
+            className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors xl:px-3 xl:py-2 xl:text-sm ${
+              active
+                ? "bg-amber-500/15 text-amber-100 ring-1 ring-amber-400/25"
+                : "text-slate-300 hover:bg-white/5 hover:text-slate-50"
+            }`}
+          >
+            {label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 export function PremiumAppHeader({ user, navLinks, pathname, onLogout }: PremiumAppHeaderProps) {
   return (
     <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-[#060d18]/95 shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[padding:max(0px)]:pt-[env(safe-area-inset-top)]">
-      <div className="mx-auto max-w-6xl px-4 py-3.5 sm:px-6 sm:py-4 lg:py-4">
-        <div className="flex items-center gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center lg:gap-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        {/* Mobile + tablet: compact single row */}
+        <div className="flex items-center justify-between gap-3 py-3.5 lg:hidden">
           <Link
             href="/dashboard"
-            className="group flex min-w-0 items-center gap-3.5 rounded-xl outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-amber-400/40 sm:gap-4 lg:justify-self-start"
+            className="group flex min-w-0 items-center gap-2.5 rounded-xl outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-amber-400/40"
           >
             <TournamentLogoMark />
-            <div className="min-w-0 hidden sm:block">
-              <p className="truncate text-sm font-semibold tracking-tight text-slate-50 group-hover:text-white">
-                Las Marías Blue Cup
-              </p>
-              <p className="truncate text-[10px] font-medium uppercase tracking-[0.16em] text-sky-400/80">
-                Live Control
-              </p>
-            </div>
-            <span className="truncate text-sm font-semibold tracking-tight text-slate-100 sm:hidden">
-              Blue Cup
-            </span>
+            <span className="truncate text-sm font-semibold tracking-tight text-slate-100">Blue Cup</span>
           </Link>
+          {user ? <UserAccountStrip user={user} onLogout={onLogout} compact /> : null}
+        </div>
 
-          <nav
-            className="hidden lg:flex lg:justify-self-center lg:items-center lg:gap-0.5"
-            aria-label="Primary navigation"
-          >
-            {navLinks.map(({ href, label }) => {
-              const active = pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`min-h-10 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    active
-                      ? "bg-amber-500/15 text-amber-100 ring-1 ring-amber-400/25"
-                      : "text-slate-300 hover:bg-white/5 hover:text-slate-50"
-                  }`}
-                >
-                  {label}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="ml-auto flex shrink-0 items-center gap-2 lg:justify-self-end lg:ml-0">
-            {user ? (
-              <>
-                <div className="hidden items-center gap-2 rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-xs md:flex">
-                  <span className="max-w-[11rem] truncate text-slate-400">
-                    <span className="font-medium text-slate-100">{user.email}</span>
-                  </span>
-                  <span className="h-3 w-px bg-white/10" aria-hidden />
-                  <span className="rounded-full border border-amber-400/20 bg-amber-500/10 px-2 py-0.5 font-medium capitalize text-amber-100/90">
-                    {user.role}
-                  </span>
-                </div>
-                <span className="rounded-full border border-amber-400/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-medium capitalize text-amber-100/90 md:hidden">
-                  {user.role}
-                </span>
-              </>
-            ) : null}
-            <button
-              type="button"
-              onClick={onLogout}
-              className="min-h-10 rounded-lg border border-white/15 bg-white/[0.04] px-3 py-2 text-sm font-medium text-slate-200 transition hover:border-white/20 hover:bg-white/10"
+        {/* Desktop: brand row + dedicated nav row — prevents overlap */}
+        <div className="hidden lg:block">
+          <div className="flex items-center justify-between gap-6 py-3.5 xl:py-4">
+            <Link
+              href="/dashboard"
+              className="group flex min-w-0 max-w-[min(100%,22rem)] shrink-0 items-center gap-3.5 rounded-xl outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-amber-400/40 xl:gap-4"
             >
-              Log out
-            </button>
+              <TournamentLogoMark />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold tracking-tight text-slate-50 group-hover:text-white xl:text-[15px]">
+                  Las Marías Blue Cup
+                </p>
+                <p className="truncate text-[10px] font-medium uppercase tracking-[0.16em] text-sky-400/80">
+                  Live Control
+                </p>
+              </div>
+            </Link>
+
+            {user ? <UserAccountStrip user={user} onLogout={onLogout} /> : null}
+          </div>
+
+          <div className="border-t border-white/[0.06]">
+            <DesktopNav navLinks={navLinks} pathname={pathname} />
           </div>
         </div>
       </div>
