@@ -18,6 +18,8 @@
     "create-admin-user": "ts-node -r tsconfig-paths/register prisma/create-admin-user.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1079.0",
+    "@aws-sdk/s3-request-presigner": "^3.1079.0",
     "@bluecup/types": "workspace:*",
     "@nestjs/common": "^10.4.20",
     "@nestjs/config": "^3.3.0",

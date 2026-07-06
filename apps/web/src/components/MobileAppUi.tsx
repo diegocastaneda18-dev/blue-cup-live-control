@@ -136,6 +136,7 @@ export function CatchHistoryCard({
   scoreLabel,
   createdAt,
   mediaCount,
+  mediaLine,
   href
 }: {
   status: string;
@@ -148,6 +149,7 @@ export function CatchHistoryCard({
   scoreLabel?: string | null;
   createdAt: string;
   mediaCount: number;
+  mediaLine?: string | null;
   href: string;
 }) {
   const speciesLine = speciesName
@@ -184,7 +186,7 @@ export function CatchHistoryCard({
       <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-white/[0.06] pt-3 text-xs text-slate-500">
         <span>{createdAt}</span>
         <span className="text-slate-700">·</span>
-        <span>{mediaCount > 0 ? `${mediaCount} media` : "No media"}</span>
+        <span>{mediaLine ?? (mediaCount > 0 ? `${mediaCount} media` : "No media")}</span>
         <span className="ml-auto font-semibold text-amber-200/80 group-hover:text-amber-100">Details →</span>
       </div>
     </Link>

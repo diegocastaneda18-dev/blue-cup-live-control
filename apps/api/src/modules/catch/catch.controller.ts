@@ -26,7 +26,13 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import type { JwtUser } from "@bluecup/types";
 import { AddCatchMediaDto } from "./dto/add-media.dto";
 import { SubmitCatchDto } from "./dto/submit-catch.dto";
+import {
+  CompleteMediaUploadDto,
+  InitMediaUploadDto,
+  PresignUploadPartsDto
+} from "./dto/media-upload.dto";
 import { CatchService } from "./catch.service";
+import { MediaUploadService } from "./media-upload.service";
 
 @Catch()
 class MulterUploadExceptionFilter implements ExceptionFilter {
@@ -46,7 +52,10 @@ class MulterUploadExceptionFilter implements ExceptionFilter {
 @Controller("catches")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class CatchController {
-  constructor(private readonly catches: CatchService) {}
+  constructor(
+    private readonly catches: CatchService,
+    private readonly mediaUploads: MediaUploadService
+  ) {}
 
   @Post()
   @Roles("captain", "team_member")
@@ -114,6 +123,57 @@ export class CatchController {
     const url = `${publicBase}/uploads/${urlPath}`;
 
     return { objectKey, url };
+  }
+
+  @Post("media/uploads/init")
+  @Roles("captain", "team_member")
+  async initMediaUpload(@Body() dto: InitMediaUploadDto, @CurrentUser() user: JwtUser) {
+    return this.mediaUploads.initUpload({
+      catchId: dto.catchId,
+      type: dto.type,
+      mimeType: dto.mimeType,
+      sizeBytes: dto.sizeBytes,
+      fileName: dto.fileName,
+      actorId: user.sub
+    });
+  }
+
+  @Post("media/uploads/:mediaId/presign-parts")
+  @Roles("captain", "team_member")
+  async presignMediaParts(
+    @Param("mediaId") mediaId: string,
+    @Body() dto: PresignUploadPartsDto,
+    @CurrentUser() user: JwtUser
+  ) {
+    return this.mediaUploads.presignParts(mediaId, dto.partNumbers, user.sub);
+  }
+
+  @Post("media/uploads/:mediaId/complete")
+  @Roles("captain", "team_member")
+  async completeMediaUpload(
+    @Param("mediaId") mediaId: string,
+    @Body() dto: CompleteMediaUploadDto,
+    @CurrentUser() user: JwtUser
+  ) {
+    return this.mediaUploads.completeUpload(mediaId, dto.parts, user.sub);
+  }
+
+  @Post("media/uploads/:mediaId/abort")
+  @Roles("captain", "team_member")
+  async abortMediaUpload(@Param("mediaId") mediaId: string, @CurrentUser() user: JwtUser) {
+    return this.mediaUploads.abortUpload(mediaId, user.sub);
+  }
+
+  @Post("media/uploads/:mediaId/retry")
+  @Roles("captain", "team_member")
+  async retryMediaUpload(@Param("mediaId") mediaId: string, @CurrentUser() user: JwtUser) {
+    return this.mediaUploads.retryUpload(mediaId, user.sub);
+  }
+
+  @Get("media/:mediaId/status")
+  @Roles("captain", "team_member")
+  async mediaUploadStatus(@Param("mediaId") mediaId: string, @CurrentUser() user: JwtUser) {
+    return this.mediaUploads.getStatus(mediaId, user.sub);
   }
 
   @Get("me")

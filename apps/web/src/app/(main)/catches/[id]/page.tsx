@@ -3,6 +3,8 @@
 import { Card } from "@bluecup/ui";
 import { CatchStatusBadge } from "../../../../components/CatchStatusBadge";
 import { MobileScoreHero } from "../../../../components/MobileAppUi";
+import { MediaUploadStatusBadge, UploadProgressBar } from "../../../../components/MediaUploadStatus";
+import { retryMediaFile, userFacingUploadMessage, type MediaUploadStatus, type UploadProgress } from "../../../../lib/mediaUpload";
 import {
   btnGhostClass,
   btnPrimaryClass,
@@ -16,6 +18,7 @@ import {
 } from "../../../../components/PageChrome";
 import { demoCatchDetailById, isDemoMode } from "@bluecup/types";
 import { publicApiUrl } from "../../../../lib/env";
+import { useToast } from "../../../../components/Toast";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -45,7 +48,14 @@ type CatchDetail = {
   scoreOfficial: number | null;
   category?: { name: string; code: string } | null;
   species?: { name: string; code: string } | null;
-  media?: { id: string; type: string; url: string; objectKey: string }[];
+  media?: {
+    id: string;
+    type: string;
+    url: string;
+    objectKey: string;
+    uploadStatus?: MediaUploadStatus;
+    errorMessage?: string | null;
+  }[];
   reviews?: ReviewRow[];
 };
 
@@ -80,6 +90,9 @@ export default function CatchDetailPage() {
   const [data, setData] = useState<CatchDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [retryProgress, setRetryProgress] = useState<UploadProgress | null>(null);
+  const [retryingMediaId, setRetryingMediaId] = useState<string | null>(null);
+  const toast = useToast();
 
   const load = useCallback(async () => {
     const token = typeof window !== "undefined" ? localStorage.getItem(ACCESS_TOKEN_KEY) : null;
@@ -147,6 +160,24 @@ export default function CatchDetailPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function retryMedia(mediaId: string, file: File) {
+    const token = typeof window !== "undefined" ? localStorage.getItem(ACCESS_TOKEN_KEY) : null;
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+    setRetryingMediaId(mediaId);
+    setRetryProgress({ loaded: 0, total: file.size, percent: 0, label: "Starting retry…" });
+    const result = await retryMediaFile(token, mediaId, file, setRetryProgress);
+    setRetryingMediaId(null);
+    setRetryProgress(null);
+    if (result.status === "ok") {
+      void load();
+      return;
+    }
+    toast.error(userFacingUploadMessage(result));
+  }
 
   const score = data ? scoreLabel(data) : null;
   const reviews = data?.reviews ?? [];
@@ -232,28 +263,64 @@ export default function CatchDetailPage() {
               <Card title="Media">
                 {data.media && data.media.length > 0 ? (
                   <ul className="grid gap-3">
-                    {data.media.map((m) => (
-                      <li key={m.id}>
-                        <a
-                          href={m.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 transition active:scale-[0.99] hover:border-sky-500/25"
-                        >
-                          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold capitalize text-amber-100">
-                            {m.type}
-                          </span>
-                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-sky-300">
-                            {m.objectKey || "Open media"}
-                          </span>
-                          <span className="text-xs text-slate-500">Open →</span>
-                        </a>
-                      </li>
-                    ))}
+                    {data.media.map((m) => {
+                      const ready = (m.uploadStatus ?? "ready") === "ready";
+                      return (
+                        <li key={m.id} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold capitalize text-amber-100">
+                              {m.type}
+                            </span>
+                            <MediaUploadStatusBadge status={m.uploadStatus} />
+                          </div>
+                          {m.errorMessage ? (
+                            <p className="mt-2 text-xs text-red-200/90">{m.errorMessage}</p>
+                          ) : null}
+                          {ready ? (
+                            <a
+                              href={m.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-3 flex min-h-11 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm font-medium text-sky-300"
+                            >
+                              <span className="truncate">{m.objectKey || "Open media"}</span>
+                              <span className="text-xs text-slate-500">Open →</span>
+                            </a>
+                          ) : (
+                            <p className="mt-3 text-sm text-slate-400">
+                              {(m.uploadStatus ?? "ready") === "uploading" || m.uploadStatus === "processing"
+                                ? "Evidence is still uploading or processing."
+                                : "Evidence is not ready yet."}
+                            </p>
+                          )}
+                          {m.uploadStatus === "failed" ? (
+                            <label className="mt-3 inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-100">
+                              {retryingMediaId === m.id ? "Retrying…" : "Retry upload"}
+                              <input
+                                type="file"
+                                accept={m.type === "photo" ? "image/*" : "video/*"}
+                                className="sr-only"
+                                disabled={retryingMediaId != null}
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0];
+                                  if (f) void retryMedia(m.id, f);
+                                  e.target.value = "";
+                                }}
+                              />
+                            </label>
+                          ) : null}
+                        </li>
+                      );
+                    })}
                   </ul>
                 ) : (
                   <p className="text-sm text-slate-500">No media attached.</p>
                 )}
+                {retryProgress ? (
+                  <div className="mt-4">
+                    <UploadProgressBar percent={retryProgress.percent} label={retryProgress.label} />
+                  </div>
+                ) : null}
               </Card>
             </div>
 

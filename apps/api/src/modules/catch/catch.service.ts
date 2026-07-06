@@ -91,7 +91,14 @@ export class CatchService {
       throw new BadRequestException("Cannot modify media after approval/official without workflow");
     }
     const created = await this.prisma.catchMedia.create({
-      data: { catchId: params.catchId, type: params.type, objectKey: params.objectKey, url: params.url }
+      data: {
+        catchId: params.catchId,
+        type: params.type,
+        objectKey: params.objectKey,
+        url: params.url,
+        uploadStatus: "ready",
+        storageProvider: "legacy"
+      }
     });
     await this.audit.log({
       ctx: { actorId: params.actorId },
@@ -146,6 +153,16 @@ export class CatchService {
     });
   }
 
+  async listCatchHistoryForTournament(tournamentId: string) {
+    if (!tournamentId.trim()) return [];
+    return this.prisma.catch.findMany({
+      where: { tournamentId },
+      include: this.catchDetailInclude(),
+      orderBy: { createdAt: "desc" },
+      take: 100
+    });
+  }
+
   async reviewCatch(params: {
     catchId: string;
     reviewerId: string;
@@ -164,8 +181,13 @@ export class CatchService {
     });
     if (!scoringRule) throw new BadRequestException("No scoring rule for category");
 
-    if (params.action === "approve" && scoringRule.requiresMedia && c.media.length === 0) {
-      throw new BadRequestException("Media evidence required for this catch type/category");
+    if (params.action === "approve" && scoringRule.requiresMedia) {
+      const readyCount = c.media.filter((m) => m.uploadStatus === "ready").length;
+      if (readyCount === 0) {
+        throw new BadRequestException(
+          "Media evidence must be fully uploaded (ready) before approval. Check video upload status."
+        );
+      }
     }
     if (params.action === "penalize" && (params.penaltyPoints == null || params.penaltyPoints <= 0)) {
       throw new BadRequestException("penaltyPoints required for penalize");

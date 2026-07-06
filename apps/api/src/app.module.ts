@@ -1,3 +1,4 @@
+import { StorageModule } from "./infra/storage/storage.module";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { PrismaModule } from "./infra/prisma/prisma.module";
@@ -15,6 +16,7 @@ import { HealthController } from "./health.controller";
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    StorageModule,
     AuditModule,
     AuthModule,
     UserModule,

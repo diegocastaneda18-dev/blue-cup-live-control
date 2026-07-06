@@ -14,14 +14,19 @@ import {
   SectionLabel
 } from "../../../components/PageChrome";
 import { CatchHistoryCard } from "../../../components/MobileAppUi";
+import { summarizeCatchMedia } from "../../../lib/mediaUpload";
 import Link from "next/link";
-import { demoCatchHistoryRows, isDemoMode } from "@bluecup/types";
+import { demoCatchHistoryRows, demoTournamentsList, isDemoMode } from "@bluecup/types";
 import { getPublicApiBaseUrl, publicApiUrl } from "../../../lib/env";
+import { normalizeRole } from "../../../lib/rbac";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 const ACCESS_TOKEN_KEY = "accessToken";
-const API_HISTORY = publicApiUrl("/catches/me");
+const API_ME = publicApiUrl("/auth/me");
+const API_TOURNAMENTS = publicApiUrl("/tournaments");
+const API_TEAM_HISTORY = publicApiUrl("/catches/me");
+const API_TOURNAMENT_HISTORY = publicApiUrl("/committee/catches/history");
 
 type ReviewRow = {
   id: string;
@@ -42,7 +47,13 @@ type CatchRow = {
   scoreOfficial?: number | null;
   category?: { name: string; code: string } | null;
   species?: { name: string; code: string } | null;
-  media?: { id: string; type: string; url: string; objectKey: string }[];
+  media?: {
+    id: string;
+    type: string;
+    url: string;
+    objectKey: string;
+    uploadStatus?: "uploading" | "processing" | "ready" | "failed";
+  }[];
   reviews?: ReviewRow[];
 };
 
@@ -58,12 +69,62 @@ function scoreParts(c: CatchRow) {
   };
 }
 
+type TournamentOption = { id: string; name: string; isActive?: boolean };
+
+function pickTournamentId(list: TournamentOption[]): string {
+  const active = list.find((t) => t.isActive);
+  return active?.id ?? list[0]?.id ?? "";
+}
+
+async function resolveHistoryUrl(token: string, demo: boolean): Promise<string | null> {
+  const authHeader = { Authorization: `Bearer ${token}` };
+  const meRes = await fetch(API_ME, { cache: "no-store", headers: authHeader });
+  if (meRes.status === 401) return API_TEAM_HISTORY;
+  if (!meRes.ok) return API_TEAM_HISTORY;
+
+  const meJson = (await meRes.json()) as { user?: { role?: string } };
+  const role = normalizeRole(meJson.user?.role ?? "");
+  if (role !== "admin" && role !== "committee") {
+    return API_TEAM_HISTORY;
+  }
+
+  const tourRes = await fetch(API_TOURNAMENTS, { cache: "no-store", headers: authHeader });
+  if (!tourRes.ok) {
+    if (demo) {
+      const list = demoTournamentsList();
+      const tournamentId = pickTournamentId(list);
+      return tournamentId
+        ? `${API_TOURNAMENT_HISTORY}?tournamentId=${encodeURIComponent(tournamentId)}`
+        : null;
+    }
+    return null;
+  }
+
+  const data = (await tourRes.json()) as unknown;
+  let list = Array.isArray(data) ? (data as TournamentOption[]) : [];
+  if (list.length === 0 && demo) {
+    list = demoTournamentsList();
+  }
+  const tournamentId = pickTournamentId(list);
+  if (!tournamentId) return null;
+  return `${API_TOURNAMENT_HISTORY}?tournamentId=${encodeURIComponent(tournamentId)}`;
+}
+
 function formatWhen(iso: string) {
   try {
     return new Date(iso).toLocaleString();
   } catch {
     return iso;
   }
+}
+
+function mediaSummaryLine(c: CatchRow): string | null {
+  const media = c.media ?? [];
+  if (media.length === 0) return null;
+  const stats = summarizeCatchMedia(media);
+  if (stats.pending > 0) return `${stats.ready} ready · ${stats.pending} processing`;
+  if (stats.failed > 0) return `${stats.ready} ready · ${stats.failed} failed`;
+  return `${media.length} media ready`;
 }
 
 export default function CatchesPage() {
@@ -82,13 +143,25 @@ export default function CatchesPage() {
     setError(null);
     const demo = isDemoMode();
     try {
-      const res = await fetch(API_HISTORY, {
+      const historyUrl = await resolveHistoryUrl(token, demo);
+      if (!historyUrl) {
+        setRows([]);
+        setError(null);
+        return;
+      }
+
+      const res = await fetch(historyUrl, {
         cache: "no-store",
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.status === 401) {
         localStorage.removeItem(ACCESS_TOKEN_KEY);
         router.replace("/login");
+        return;
+      }
+      if (res.status === 403) {
+        setRows([]);
+        setError(null);
         return;
       }
       if (!res.ok) {
@@ -178,6 +251,7 @@ export default function CatchesPage() {
                       scoreLabel={score.label}
                       createdAt={formatWhen(c.createdAt)}
                       mediaCount={c.media?.length ?? 0}
+                      mediaLine={mediaSummaryLine(c)}
                       href={`/catches/${c.id}`}
                     />
                   </li>

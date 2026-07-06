@@ -3,12 +3,13 @@ import { AuditModule } from "../audit/audit.module";
 import { CatchController } from "./catch.controller";
 import { CatchService } from "./catch.service";
 import { CommitteeCatchController } from "./committee.controller";
+import { MediaUploadService } from "./media-upload.service";
 import { LeaderboardModule } from "../leaderboard/leaderboard.module";
 
 @Module({
   imports: [AuditModule, LeaderboardModule],
   controllers: [CatchController, CommitteeCatchController],
-  providers: [CatchService],
+  providers: [CatchService, MediaUploadService],
   exports: [CatchService]
 })
 export class CatchModule {}

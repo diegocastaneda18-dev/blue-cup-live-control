@@ -42,6 +42,13 @@ enum MediaType {
   video
 }
 
+enum MediaUploadStatus {
+  uploading
+  processing
+  ready
+  failed
+}
+
 enum ReviewAction {
   approve
   reject
@@ -227,14 +234,26 @@ model Catch {
 }
 
 model CatchMedia {
-  id        String    @id @default(uuid())
-  catchId   String
-  type      MediaType
-  objectKey String
-  url       String
-  createdAt DateTime  @default(now())
+  id                String             @id @default(uuid())
+  catchId           String
+  type              MediaType
+  objectKey         String
+  url               String
+  storageProvider   String             @default("s3")
+  bucket            String?
+  mimeType          String?
+  sizeBytes         Int?
+  uploadStatus      MediaUploadStatus  @default(ready)
+  multipartUploadId String?
+  uploadSessionId   String?            @unique
+  durationSeconds   Int?
+  errorMessage      String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   catch Catch @relation(fields: [catchId], references: [id])
+
+  @@index([catchId, uploadStatus])
 }
 
 model CatchReview {

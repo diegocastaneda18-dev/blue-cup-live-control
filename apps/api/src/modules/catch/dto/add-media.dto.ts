@@ -1,4 +1,4 @@
-import { IsIn, IsString, IsUrl } from "class-validator";
+import { IsIn, IsString, MinLength } from "class-validator";
 import type { MediaType } from "@bluecup/types";
 
 export class AddCatchMediaDto {
@@ -11,7 +11,8 @@ export class AddCatchMediaDto {
   @IsString()
   objectKey!: string;
 
-  @IsUrl()
+  @IsString()
+  @MinLength(8)
   url!: string;
 }
 

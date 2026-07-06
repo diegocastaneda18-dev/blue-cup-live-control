@@ -2,6 +2,7 @@
 
 import { Card } from "@bluecup/ui";
 import { CatchStatusBadge } from "../../../../components/CatchStatusBadge";
+import { MediaUploadStatusBadge } from "../../../../components/MediaUploadStatus";
 import { EmptyState } from "../../../../components/EmptyState";
 import {
   MetaChip,
@@ -51,7 +52,7 @@ type PendingCatch = {
   team: { id: string; name: string };
   category: { name: string; code: string };
   species?: { name: string; code: string } | null;
-  media: { id: string }[];
+  media: { id: string; type?: string; uploadStatus?: string; url?: string }[];
 };
 
 type ReviewAction = "approve" | "reject" | "request_more_evidence" | "penalize";
@@ -408,9 +409,23 @@ export default function CommitteeCatchesPage() {
                       {c.weightKg != null ? <MetaChip>{c.weightKg} kg</MetaChip> : null}
                       {c.lengthCm != null ? <MetaChip>{c.lengthCm} cm</MetaChip> : null}
                       <MetaChip>
-                        {c.media.length} media file{c.media.length === 1 ? "" : "s"}
+                        {c.media.filter((m) => (m.uploadStatus ?? "ready") === "ready").length}/{c.media.length}{" "}
+                        evidence ready
                       </MetaChip>
                     </div>
+                    {c.media.length > 0 ? (
+                      <ul className="mt-4 space-y-2">
+                        {c.media.map((m) => (
+                          <li
+                            key={m.id}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2"
+                          >
+                            <span className="text-sm capitalize text-slate-200">{m.type ?? "media"}</span>
+                            <MediaUploadStatusBadge status={m.uploadStatus as "uploading" | "processing" | "ready" | "failed" | undefined} />
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </div>
 
                   <div className="grid gap-5 px-4 py-5 sm:px-5">

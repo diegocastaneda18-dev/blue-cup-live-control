@@ -29,6 +29,8 @@ import {
   demoTournamentsList,
   isDemoMode
 } from "@bluecup/types";
+import { UploadProgressBar } from "../../../../components/MediaUploadStatus";
+import { uploadCatchFile, userFacingUploadMessage, type UploadProgress } from "../../../../lib/mediaUpload";
 import Link from "next/link";
 import { publicApiUrl } from "../../../../lib/env";
 import { useToast } from "../../../../components/Toast";
@@ -58,30 +60,20 @@ function authHeader(): HeadersInit {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-async function uploadCatchEvidence(
+async function registerManualMedia(
   token: string,
-  kind: "photo" | "video",
-  file: File
-): Promise<{ objectKey: string; url: string } | "too_large" | null> {
-  const form = new FormData();
-  form.append("file", file);
-  const url = `${publicApiUrl("/catches/media/upload")}?kind=${encodeURIComponent(kind)}`;
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: form
-    });
-    if (res.status === 413) return "too_large";
-    if (!res.ok) return null;
-    const j = (await res.json()) as { objectKey?: string; url?: string };
-    const objectKey = j.objectKey?.trim();
-    const evidenceUrl = j.url?.trim();
-    if (!objectKey || !evidenceUrl) return null;
-    return { objectKey, url: evidenceUrl };
-  } catch {
-    return null;
-  }
+  catchId: string,
+  type: "photo" | "video",
+  objectKey: string,
+  url: string
+): Promise<boolean> {
+  const res = await fetch(API_CATCH_MEDIA, {
+    method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ catchId, type, objectKey, url })
+  });
+  return res.ok;
 }
 
 export default function NewCatchPage() {
@@ -121,6 +113,7 @@ export default function NewCatchPage() {
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [showAdvancedMedia, setShowAdvancedMedia] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
 
   useEffect(() => {
     const t = typeof window !== "undefined" ? localStorage.getItem(ACCESS_TOKEN_KEY) : null;
@@ -357,6 +350,7 @@ export default function NewCatchPage() {
 
     setSubmitting(true);
     setMediaError(null);
+    setUploadProgress(null);
     try {
       const res = await fetch(API_CATCHES, {
         method: "POST",
@@ -384,75 +378,53 @@ export default function NewCatchPage() {
         return;
       }
 
-      const mediaParts: { type: "photo" | "video"; objectKey: string; url: string }[] = [];
       let photoUploadFailed = false;
       let videoUploadFailed = false;
-      let videoTooLarge = false;
+      const userLines: string[] = [];
 
       if (photoFile) {
-        const up = await uploadCatchEvidence(token, "photo", photoFile);
-        if (up && up !== "too_large") mediaParts.push({ type: "photo", objectKey: up.objectKey, url: up.url });
-        else photoUploadFailed = true;
+        const up = await uploadCatchFile(token, catchId, "photo", photoFile, setUploadProgress);
+        if (up.status === "too_large") {
+          photoUploadFailed = true;
+          userLines.push("Catch saved, but photo exceeds the configured size limit.");
+        } else if (up.status === "failed") {
+          photoUploadFailed = true;
+          userLines.push(`Catch saved, but photo upload failed: ${userFacingUploadMessage(up)}`);
+        }
       } else if (effectivePhotoKey && effectivePhotoUrl) {
-        mediaParts.push({ type: "photo", objectKey: effectivePhotoKey, url: effectivePhotoUrl });
+        const ok = await registerManualMedia(token, catchId, "photo", effectivePhotoKey, effectivePhotoUrl);
+        if (!ok) {
+          photoUploadFailed = true;
+          userLines.push("Catch saved, but photo registration failed. Retry from catch detail.");
+        }
       }
 
       if (videoFile) {
-        const up = await uploadCatchEvidence(token, "video", videoFile);
-        if (up === "too_large") {
-          videoTooLarge = true;
-        } else if (up) {
-          mediaParts.push({ type: "video", objectKey: up.objectKey, url: up.url });
-        } else {
+        const up = await uploadCatchFile(token, catchId, "video", videoFile, setUploadProgress);
+        if (up.status === "too_large") {
           videoUploadFailed = true;
+          userLines.push("Catch saved, but video exceeds the configured size limit.");
+        } else if (up.status === "failed") {
+          videoUploadFailed = true;
+          userLines.push(`Catch saved, but video upload failed: ${userFacingUploadMessage(up)}`);
         }
       } else if (effectiveVideoKey && effectiveVideoUrl) {
-        mediaParts.push({ type: "video", objectKey: effectiveVideoKey, url: effectiveVideoUrl });
-      }
-
-      const mediaFailures: string[] = [];
-      for (const m of mediaParts) {
-        const mRes = await fetch(API_CATCH_MEDIA, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            catchId,
-            type: m.type,
-            objectKey: m.objectKey,
-            url: m.url
-          })
-        });
-        const mRaw = (await mRes.json().catch(() => null)) as { message?: string | string[] } | null;
-        if (mRes.status === 401) {
-          localStorage.removeItem(ACCESS_TOKEN_KEY);
-          router.replace("/login");
-          return;
-        }
-        if (!mRes.ok) {
-          const msg = mRaw?.message;
-          const text = Array.isArray(msg) ? msg.join(" ") : msg;
-          mediaFailures.push(`${m.type}: ${text || mRes.status}`);
+        const ok = await registerManualMedia(token, catchId, "video", effectiveVideoKey, effectiveVideoUrl);
+        if (!ok) {
+          videoUploadFailed = true;
+          userLines.push("Catch saved, but video registration failed. Retry from catch detail.");
         }
       }
 
-      const userLines: string[] = [];
-      if (photoUploadFailed) {
-        userLines.push("Catch saved, but photo upload failed. You can retry later.");
+      if (photoUploadFailed && userLines.length === 0) {
+        userLines.push("Catch saved, but photo upload failed. Retry from catch detail.");
       }
-      if (videoTooLarge) {
-        userLines.push("Catch saved, but video is too large. Please send it externally to the committee.");
+      if (videoUploadFailed && !userLines.some((l) => l.includes("video"))) {
+        userLines.push("Catch saved, but video upload failed. Retry from catch detail.");
       }
-      if (videoUploadFailed) {
-        userLines.push("Catch saved, but video upload failed. You can retry later.");
-      }
-
-      if (userLines.length > 0 || mediaFailures.length > 0) {
-        const combined = [...userLines, ...mediaFailures].join(" · ");
-        setMediaError(combined);
-        toast.error(userLines[0] ?? `Catch saved, but media upload failed: ${mediaFailures.join(" · ")}`);
+      if (userLines.length > 0) {
+        setMediaError(userLines.join(" · "));
+        toast.error(userLines[0] ?? "Catch saved, but media upload had issues.");
       } else {
         toast.success("Catch submitted — pending committee review.");
       }
@@ -474,6 +446,7 @@ export default function NewCatchPage() {
       toast.error("Could not reach the API.");
     } finally {
       setSubmitting(false);
+      setUploadProgress(null);
     }
   }
 
@@ -722,6 +695,10 @@ export default function NewCatchPage() {
                 </FormField>
               </div>
             </FieldGroup>
+
+            {uploadProgress ? (
+              <UploadProgressBar percent={uploadProgress.percent} label={uploadProgress.label} />
+            ) : null}
 
             <StickyFormActions>
               <button
