@@ -23,6 +23,11 @@ export class CommitteeCatchController {
     return this.catches.listCatchHistoryForTournament(tournamentId ?? "");
   }
 
+  @Get(":catchId")
+  async getOne(@Param("catchId") catchId: string) {
+    return this.catches.getCatchForCommittee(catchId);
+  }
+
   @Post(":catchId/review")
   async review(@Param("catchId") catchId: string, @Body() dto: ReviewActionDto, @CurrentUser() user: JwtUser) {
     return this.catches.reviewCatch({

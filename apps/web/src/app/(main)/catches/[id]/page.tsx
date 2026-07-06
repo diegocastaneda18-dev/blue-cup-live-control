@@ -18,13 +18,37 @@ import {
 } from "../../../../components/PageChrome";
 import { demoCatchDetailById, isDemoMode } from "@bluecup/types";
 import { publicApiUrl } from "../../../../lib/env";
+import { normalizeRole } from "../../../../lib/rbac";
 import { useToast } from "../../../../components/Toast";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 const ACCESS_TOKEN_KEY = "accessToken";
-const API_CATCH = (id: string) => publicApiUrl(`/catches/${encodeURIComponent(id)}`);
+const API_ME = publicApiUrl("/auth/me");
+
+function teamCatchDetailUrl(catchId: string): string {
+  return publicApiUrl(`/catches/${encodeURIComponent(catchId)}`);
+}
+
+function committeeCatchDetailUrl(catchId: string): string {
+  return publicApiUrl(`/committee/catches/${encodeURIComponent(catchId)}`);
+}
+
+async function resolveCatchDetailUrl(token: string, catchId: string): Promise<string> {
+  const meRes = await fetch(API_ME, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!meRes.ok) return teamCatchDetailUrl(catchId);
+
+  const meJson = (await meRes.json()) as { user?: { role?: string } };
+  const role = normalizeRole(meJson.user?.role ?? "");
+  if (role === "admin" || role === "committee") {
+    return committeeCatchDetailUrl(catchId);
+  }
+  return teamCatchDetailUrl(catchId);
+}
 
 type ReviewRow = {
   id: string;
@@ -108,7 +132,8 @@ export default function CatchDetailPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(API_CATCH(id), {
+      const detailUrl = await resolveCatchDetailUrl(token, id);
+      const res = await fetch(detailUrl, {
         cache: "no-store",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -117,7 +142,7 @@ export default function CatchDetailPage() {
         router.replace("/login");
         return;
       }
-      if (res.status === 404) {
+      if (res.status === 404 || res.status === 403) {
         const demo = isDemoMode();
         const sample = demo ? demoCatchDetailById(id) : null;
         if (sample) {
