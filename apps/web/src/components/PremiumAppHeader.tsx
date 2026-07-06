@@ -14,24 +14,28 @@ type PremiumAppHeaderProps = {
   onLogout: () => void;
 };
 
-function TournamentLogoMark({ compact = false }: { compact?: boolean }) {
+function TournamentLogoMark({ variant = "header" }: { variant?: "header" | "login" }) {
+  const isLogin = variant === "login";
+  const imageClass = isLogin
+    ? "h-14 max-h-14 w-auto object-contain object-left sm:h-16 sm:max-h-16 lg:h-20 lg:max-h-20"
+    : "h-12 max-h-12 w-auto object-contain object-left sm:h-14 sm:max-h-14 lg:h-[72px] lg:max-h-[72px]";
+  const fallbackClass = isLogin
+    ? "h-14 px-4 sm:h-16 lg:h-20"
+    : "h-12 px-3.5 sm:h-14 lg:h-[72px]";
+
   return (
     <BrandingImage
       src={LMBC_LOGO_SRC}
       alt="Las Marías Blue Cup"
-      width={200}
-      height={56}
+      width={320}
+      height={84}
       priority
-      className={`w-auto object-contain object-left ${
-        compact ? "h-9 max-h-9 sm:h-10 sm:max-h-10" : "h-10 max-h-10 sm:h-11 sm:max-h-11"
-      }`}
+      className={imageClass}
       fallback={
         <div
-          className={`flex items-center justify-center rounded-lg border border-amber-400/25 bg-gradient-to-br from-amber-500/15 to-sky-500/10 px-3 ${
-            compact ? "h-9 sm:h-10" : "h-10 sm:h-11"
-          }`}
+          className={`flex items-center justify-center rounded-lg border border-amber-400/25 bg-gradient-to-br from-amber-500/15 to-sky-500/10 ${fallbackClass}`}
         >
-          <span className="text-[11px] font-bold tracking-[0.18em] text-amber-100 sm:text-xs">LMBC</span>
+          <span className="text-xs font-bold tracking-[0.18em] text-amber-100 sm:text-sm">LMBC</span>
         </div>
       }
     />
@@ -41,11 +45,11 @@ function TournamentLogoMark({ compact = false }: { compact?: boolean }) {
 export function PremiumAppHeader({ user, navLinks, pathname, onLogout }: PremiumAppHeaderProps) {
   return (
     <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-[#060d18]/95 shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[padding:max(0px)]:pt-[env(safe-area-inset-top)]">
-      <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6">
-        <div className="flex items-center gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center lg:gap-6">
+      <div className="mx-auto max-w-6xl px-4 py-3.5 sm:px-6 sm:py-4 lg:py-4">
+        <div className="flex items-center gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center lg:gap-8">
           <Link
             href="/dashboard"
-            className="group flex min-w-0 items-center gap-3 rounded-xl outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-amber-400/40 lg:justify-self-start"
+            className="group flex min-w-0 items-center gap-3.5 rounded-xl outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-amber-400/40 sm:gap-4 lg:justify-self-start"
           >
             <TournamentLogoMark />
             <div className="min-w-0 hidden sm:block">
@@ -116,8 +120,8 @@ export function PremiumAppHeader({ user, navLinks, pathname, onLogout }: Premium
 
 export function LoginBrandHeader() {
   return (
-    <div className="mx-auto mb-8 flex w-fit flex-col items-center gap-4">
-      <TournamentLogoMark />
+    <div className="mx-auto mb-8 flex w-fit flex-col items-center gap-5">
+      <TournamentLogoMark variant="login" />
       <div className="text-center">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-400/90">
           Las Marías Blue Cup
