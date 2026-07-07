@@ -12,6 +12,13 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
 import { extname } from "path";
 import { mapS3Error } from "./storage-errors";
+import {
+  isCloudflareR2Endpoint,
+  isStorageEnvConfigured,
+  resolveForcePathStyle,
+  resolvePublicMediaUrl,
+  storageEndpoint
+} from "./storage-env";
 
 export class StorageOperationError extends Error {
   readonly code: string;
@@ -42,7 +49,7 @@ export class ObjectStorageService {
   private client: S3Client | null = null;
 
   isConfigured(): boolean {
-    return Boolean(process.env.S3_BUCKET?.trim() && process.env.S3_ACCESS_KEY?.trim() && process.env.S3_SECRET_KEY?.trim());
+    return isStorageEnvConfigured();
   }
 
   limits(): StorageLimits {
@@ -60,27 +67,31 @@ export class ObjectStorageService {
   }
 
   providerLabel(): string {
-    const endpoint = process.env.S3_ENDPOINT?.trim() ?? "";
-    if (endpoint.includes("r2.cloudflarestorage.com")) return "r2";
+    const endpoint = storageEndpoint();
+    if (isCloudflareR2Endpoint(endpoint)) return "r2";
     if (endpoint.includes("railway")) return "railway";
     return "s3";
   }
 
   private getClient(): S3Client {
     if (this.client) return this.client;
-    const endpoint = process.env.S3_ENDPOINT?.trim();
+    const endpoint = storageEndpoint() || undefined;
     const region = process.env.S3_REGION?.trim() || "auto";
     const accessKeyId = process.env.S3_ACCESS_KEY?.trim();
     const secretAccessKey = process.env.S3_SECRET_KEY?.trim();
     if (!accessKeyId || !secretAccessKey) {
       throw new Error("S3 credentials are not configured");
     }
-    const forcePathStyle =
-      process.env.S3_FORCE_PATH_STYLE === "true" ||
-      Boolean(endpoint && (endpoint.includes("localhost") || endpoint.includes("127.0.0.1")));
+    if (!endpoint) {
+      throw new Error("S3_ENDPOINT is not configured");
+    }
+    const forcePathStyle = resolveForcePathStyle(endpoint);
+    if (isCloudflareR2Endpoint(endpoint)) {
+      this.logger.log("Object storage: Cloudflare R2 (virtual-hosted style, region=auto)");
+    }
     this.client = new S3Client({
       region,
-      endpoint: endpoint || undefined,
+      endpoint,
       credentials: { accessKeyId, secretAccessKey },
       forcePathStyle
     });
@@ -114,14 +125,12 @@ export class ObjectStorageService {
   }
 
   publicUrl(objectKey: string): string {
-    const base = (process.env.S3_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
-    if (base) {
-      return `${base}/${objectKey.split("/").map(encodeURIComponent).join("/")}`;
-    }
-    const endpoint = (process.env.S3_ENDPOINT || "").replace(/\/+$/, "");
-    const bucket = this.bucket();
-    if (endpoint) {
-      return `${endpoint}/${bucket}/${objectKey.split("/").map(encodeURIComponent).join("/")}`;
+    const resolved = resolvePublicMediaUrl(objectKey);
+    if (resolved) return resolved;
+    if (isCloudflareR2Endpoint()) {
+      this.logger.warn(
+        "S3_PUBLIC_BASE_URL is required for Cloudflare R2 public media URLs (use r2.dev or a custom domain)."
+      );
     }
     return objectKey;
   }

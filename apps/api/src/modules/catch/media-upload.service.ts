@@ -26,7 +26,7 @@ export class MediaUploadService {
     if (!this.storage.isConfigured()) {
       throw new ServiceUnavailableException({
         message:
-          "Direct object storage is not configured. Set S3_BUCKET, S3_ACCESS_KEY, and S3_SECRET_KEY for large video uploads.",
+          "Direct object storage is not configured. Set S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY, and S3_SECRET_KEY (Cloudflare R2 in production).",
         code: "STORAGE_NOT_CONFIGURED",
         stage: "storage_check"
       });

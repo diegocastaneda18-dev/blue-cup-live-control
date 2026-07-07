@@ -61,6 +61,9 @@ export type UploadCatchFileResult = MediaUploadSuccess | MediaUploadFailure | { 
 /** Legacy API proxy upload limit — must match catch.controller.ts multer cap. */
 export const LEGACY_UPLOAD_MAX_BYTES = 20 * 1024 * 1024;
 
+const R2_CORS_HINT =
+  "Check Cloudflare R2 bucket CORS allows PUT, GET, HEAD from your web origin and exposes ETag.";
+
 const PRESIGN_BATCH = 4;
 
 function authHeaders(token: string): HeadersInit {
@@ -178,7 +181,7 @@ export async function uploadCatchMediaDirect(
       return {
         status: "failed",
         code: "part_upload_failed",
-        message: "Photo upload to storage failed (network or CORS). Check S3 bucket CORS for browser PUT.",
+        message: `Photo upload to storage failed (network or CORS). ${R2_CORS_HINT}`,
         stage: "part_upload",
         mediaId: init.mediaId
       };
@@ -192,7 +195,7 @@ export async function uploadCatchMediaDirect(
       return {
         status: "failed",
         code: "part_upload_failed",
-        message: `Photo upload to storage failed (${putRes.status}). Check S3 bucket CORS and credentials.`,
+        message: `Photo upload to storage failed (${putRes.status}). ${R2_CORS_HINT}`,
         stage: "part_upload",
         mediaId: init.mediaId
       };
@@ -275,7 +278,7 @@ export async function uploadCatchMediaDirect(
         return {
           status: "failed",
           code: "part_upload_failed",
-          message: `Video part ${part.partNumber}/${totalParts} upload failed. Check S3 bucket CORS for browser PUT requests.`,
+          message: `Video part ${part.partNumber}/${totalParts} upload failed. ${R2_CORS_HINT}`,
           stage: "part_upload",
           mediaId: init.mediaId
         };
@@ -364,7 +367,7 @@ export async function registerLegacyCatchMedia(
 export function userFacingUploadMessage(failure: MediaUploadFailure): string {
   switch (failure.code) {
     case "storage_not_configured":
-      return "Object storage is not configured on the API. Set S3_BUCKET, S3_ACCESS_KEY, and S3_SECRET_KEY in production.";
+      return "Object storage is not configured on the API. Set S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY, and S3_SECRET_KEY (Cloudflare R2 in production).";
     case "storage_auth_error":
       return "Storage authentication failed. Verify S3_ACCESS_KEY and S3_SECRET_KEY.";
     case "storage_bucket_error":

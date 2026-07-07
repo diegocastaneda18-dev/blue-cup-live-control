@@ -45,7 +45,7 @@ export function mapS3Error(err: unknown, operation: string): MappedStorageError 
       return {
         httpStatus: 503,
         code: "STORAGE_ENDPOINT_ERROR",
-        message: `S3 endpoint returned not found during ${operation}. Check S3_ENDPOINT and S3_FORCE_PATH_STYLE.`
+        message: `S3 endpoint returned not found during ${operation}. For Cloudflare R2 use S3_FORCE_PATH_STYLE=false and S3_REGION=auto.`
       };
     case "InvalidBucketName":
       return {

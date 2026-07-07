@@ -1,6 +1,7 @@
 import { access } from "fs/promises";
 import { join } from "path";
 import { ObjectStorageService } from "../../infra/storage/object-storage.service";
+import { isStorageEnvConfigured, resolvePublicMediaUrl } from "../../infra/storage/storage-env";
 
 export type MediaAvailabilityStatus =
   | "ready"
@@ -34,21 +35,11 @@ export type ResolvedCatchMedia = CatchMediaLike & {
 const S3_PROVIDERS = new Set(["s3", "r2", "railway"]);
 
 export function storageEnvConfigured(): boolean {
-  return Boolean(
-    process.env.S3_BUCKET?.trim() && process.env.S3_ACCESS_KEY?.trim() && process.env.S3_SECRET_KEY?.trim()
-  );
+  return isStorageEnvConfigured();
 }
 
 export function computePublicUrlFromEnv(objectKey: string): string | null {
-  const key = objectKey.trim();
-  if (!key) return null;
-  const encoded = key.split("/").map(encodeURIComponent).join("/");
-  const base = (process.env.S3_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
-  if (base) return `${base}/${encoded}`;
-  const endpoint = (process.env.S3_ENDPOINT || "").replace(/\/+$/, "");
-  const bucket = process.env.S3_BUCKET?.trim();
-  if (endpoint && bucket) return `${endpoint}/${bucket}/${encoded}`;
-  return null;
+  return resolvePublicMediaUrl(objectKey);
 }
 
 export function isLegacyCatchMedia(media: { storageProvider?: string; url?: string }): boolean {
@@ -157,7 +148,7 @@ export async function resolveCatchMediaForClient(
         linkUnavailableReason: null
       };
     }
-    const message = "Object storage URL could not be resolved — check S3_PUBLIC_BASE_URL.";
+    const message = "Object storage URL could not be resolved — set S3_PUBLIC_BASE_URL to your R2 public domain (r2.dev or custom domain).";
     return {
       ...base,
       url: media.url,

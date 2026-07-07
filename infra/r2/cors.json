@@ -1,0 +1,11 @@
+[
+  {
+    "AllowedOrigins": [
+      "https://blue-cup-live-control-web.vercel.app",
+      "http://localhost:3003"
+    ],
+    "AllowedMethods": ["PUT", "GET", "HEAD"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag"]
+  }
+]
