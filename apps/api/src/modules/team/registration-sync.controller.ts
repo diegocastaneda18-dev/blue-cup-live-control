@@ -58,7 +58,8 @@ export class RegistrationSyncController {
         }
         // An existing team may have been edited by the committee. Replays must never overwrite those edits.
         if (existing) return existing;
-        const conflictingName = await tx.team.findUnique({ where: { tournamentId_name: { tournamentId: TOURNAMENT_ID, name } } });
+        // Case-insensitive check prevents duplicates of teams entered manually in uppercase.
+        const conflictingName = await tx.team.findFirst({ where: { tournamentId: TOURNAMENT_ID, name: { equals: name, mode: "insensitive" } } });
         if (conflictingName) {
           throw new ConflictException("Team name already exists; manual reconciliation required");
         }
