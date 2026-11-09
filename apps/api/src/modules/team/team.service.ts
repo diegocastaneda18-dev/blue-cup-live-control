@@ -9,7 +9,7 @@ export class TeamService {
   async listByTournament(tournamentId: string) {
     return this.prisma.team.findMany({
       where: { tournamentId },
-      include: { boat: true, members: { include: { user: true } } },
+      include: { boat: true, members: { include: { user: { select: { id: true, displayName: true, email: true, role: true, isActive: true } } } } },
       orderBy: { name: "asc" }
     });
   }
