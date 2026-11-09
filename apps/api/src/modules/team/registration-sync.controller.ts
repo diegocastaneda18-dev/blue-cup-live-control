@@ -60,9 +60,8 @@ export class RegistrationSyncController {
         if (existing) return existing;
         // Case-insensitive check prevents duplicates of teams entered manually in uppercase.
         const conflictingName = await tx.team.findFirst({ where: { tournamentId: TOURNAMENT_ID, name: { equals: name, mode: "insensitive" } } });
-        if (conflictingName) {
-          throw new ConflictException("Team name already exists; manual reconciliation required");
-        }
+        // Already-entered committee teams remain authoritative; never overwrite boat or scoring data.
+        if (conflictingName) return conflictingName;
         const saved = await tx.team.create({ data: { id: body.registrationId, tournamentId: TOURNAMENT_ID, name, usesSonar } });
         if (boatName) {
           await tx.boat.create({ data: { teamId: saved.id, name: boatName } });
